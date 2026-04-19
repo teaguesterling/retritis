@@ -199,20 +199,22 @@ inferencer.local tool#Edit, inferencer.local tool#Read { available: true; }
 ```
 
 ```bash
-# ducklog compiles the policy to DuckDB
-$ ducklog compile policy.umw -o policy.db
+# umwelt compiles the policy to SQLite
+$ umwelt compile policy.umw -o policy.db
 
-# Every enforcement tool reads the same compiled policy
-$ duckdb policy.db "SELECT * FROM permissions WHERE file_path = 'src/core/auth.py'"
+# Every enforcement tool has an umwelt plugin that defines its world state
+# and reads its policy slice with plain SQL
+$ sqlite3 policy.db "SELECT * FROM permissions WHERE file_path = 'src/core/auth.py'"
 # → editable: true, requires_approval: true, mode: implement
 
-# kibitzer reads it to know what to warn about
-# nsjail reads it to know what to mount
-# lackpy's validator reads it to know what operations are legal
-# All from the same SQL query against the same compiled database
+# Each tool queries its own view:
+#   kibitzer reads kibitzer_config to know what to warn about
+#   nsjail reads nsjail_config to know what to mount
+#   lackpy reads lackpy_config to know what operations are legal
+# Same database, different views. Each plugin defines its own world state.
 ```
 
-**What happened:** One policy file. One compilation step. Every enforcement tool reads the same compiled result with plain SQL. Change the policy in one place, every tool picks it up. The CSS syntax means both humans and LLMs read it fluently — no new DSL to learn.
+**What happened:** One policy file. umwelt compiles it, and each tool's plugin defines the world state it cares about (filesystem paths, tool availability, resource limits) and reads its own policy slice. Change the policy in one place, every tool picks it up. The CSS syntax means both humans and LLMs read it fluently — no new DSL to learn.
 
 **The disconnect this solves:** "The agent inherits the user's permissions" (principal side), "the tool is restricted to these operations" (action side), "the file system is mounted read-only" (resource side) — three separate discussions that are actually one policy question. umwelt makes it one answer.
 
@@ -315,7 +317,7 @@ Start with the minimum effective dose:
 - `pluckit` — if you want fluent code mutation chains
 
 **Experimental treatment (when you're ready for the theory):**
-- `umwelt` + `ducklog` — if you want unified policy
+- `umwelt` — if you want unified policy (each tool has its own plugin)
 - `lackpy` — if you want a local model that knows your APIs
 
 The tools are independent. Install one, install all, install them in any order. The composition emerges from the shared substrate, not from a required install sequence.

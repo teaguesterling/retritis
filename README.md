@@ -36,7 +36,7 @@ The suite has a shared substrate: [DuckDB](https://duckdb.org). Code structure, 
                            │          │          │
               ┌────────────┤          │          ├────────────┐
               │            │          │          │            │
-         sitting_duck  duck_tails    blq    agent-riggs   ducklog
+         sitting_duck  duck_tails    blq    agent-riggs   umwelt
          (AST query)   (git query) (build)  (traces)     (policy)
               │                       │
           ┌───┴───┐              ┌────┴────┐
@@ -91,10 +91,9 @@ Git workflows, code generation, policy enforcement.
 |------|-------------|---------|
 | [jetsam](https://github.com/teague/jetsam) | Git workflow accelerator. Save, sync, ship. Preview plans before execution. | `pip install jetsam-mcp` |
 | [lackpy](https://github.com/teague/lackpy) | Micro-inferencer that translates natural language intent into pluckit chains. Qwen 2.5 Coder 3B, local, $0. | `pip install lackpy` |
-| [umwelt](https://github.com/teague/umwelt) | CSS-syntax policy language with Datalog semantics. Unified authorization across principal, tool, file, mode, and model. | `pip install umwelt` |
-| [ducklog](https://github.com/teague/ducklog) | Compiles umwelt policy to DuckDB. Authorization as materialized views. Every enforcement tool reads policy with plain SQL. | `pip install ducklog` |
+| [umwelt](https://github.com/teague/umwelt) | CSS-syntax policy language with Datalog semantics and built-in SQLite compiler. Each tool defines its own world state via plugins and queries resolved policy with plain SQL. Unified authorization across principal, tool, file, mode, and model. | `pip install umwelt` |
 
-**How they compose:** jetsam handles the git ceremony. lackpy generates pluckit chains from intent, using a fine-tuned local model trained on the pluckit API spec. umwelt declares what's allowed. ducklog compiles it so every tool — nsjail, kibitzer, lackpy's validator — can read the same policy with a SQL query.
+**How they compose:** jetsam handles the git ceremony. lackpy generates pluckit chains from intent, using a fine-tuned local model trained on the pluckit API spec. umwelt declares what's allowed and compiles it to SQLite — each tool has an umwelt plugin that defines its world state and reads its policy slice with plain SQL. One policy, many consumers.
 
 ### Layer 4: Human-side palliatives
 
