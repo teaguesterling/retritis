@@ -1,0 +1,7 @@
+{
+  "squackit": {
+    "command": "squackit",
+    "args": ["mcp", "serve"],
+    "type": "stdio"
+  }
+}

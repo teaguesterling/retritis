@@ -1,0 +1,13 @@
+{
+  "name": "fledgling",
+  "description": "DuckDB-powered code analysis and conversation history — AST search, git diff analysis, code structure, and Claude session exploration",
+  "version": "1.0.0",
+  "author": {
+    "name": "Teague Sterling",
+    "email": "teaguesterling@users.noreply.github.com"
+  },
+  "homepage": "https://github.com/teaguesterling/fledgling",
+  "repository": "https://github.com/teaguesterling/fledgling",
+  "license": "MIT",
+  "keywords": ["duckdb", "code-analysis", "ast", "git", "mcp", "fledgling"]
+}

@@ -1,0 +1,13 @@
+{
+  "name": "blq",
+  "description": "Build Log Query — capture, query, and analyze build/test output through MCP instead of shell pipes",
+  "version": "1.0.0",
+  "author": {
+    "name": "Teague Sterling",
+    "email": "teaguesterling@users.noreply.github.com"
+  },
+  "homepage": "https://github.com/teaguesterling/blq",
+  "repository": "https://github.com/teaguesterling/blq",
+  "license": "MIT",
+  "keywords": ["build", "test", "logs", "mcp", "blq"]
+}

@@ -1,0 +1,17 @@
+{
+  "description": "Jetsam plugin - warn on raw git/gh usage in Bash",
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "${CLAUDE_PLUGIN_ROOT}/hooks/jetsam-warn.sh",
+            "timeout": 5
+          }
+        ]
+      }
+    ]
+  }
+}

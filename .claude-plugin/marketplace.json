@@ -1,0 +1,39 @@
+{
+  "name": "retritis",
+  "description": "Retritis — palliative treatments for agent-assisted development. Claude Code plugins for the retritis tool suite.",
+  "owner": {
+    "name": "Teague Sterling"
+  },
+  "plugins": [
+    {
+      "name": "blq",
+      "source": "./plugins/blq",
+      "description": "Build Log Query — stop copy-pasting terminal output into chat",
+      "version": "1.0.0"
+    },
+    {
+      "name": "jetsam",
+      "source": "./plugins/jetsam",
+      "description": "Git workflow accelerator — save, sync, ship without the five-step dance",
+      "version": "1.0.0"
+    },
+    {
+      "name": "fledgling",
+      "source": "./plugins/fledgling",
+      "description": "DuckDB code analysis — definitions, callers, structure, similarity",
+      "version": "1.0.0"
+    },
+    {
+      "name": "squackit",
+      "source": "./plugins/squackit",
+      "description": "Code intelligence MCP server — smart defaults, session caching, compound workflows",
+      "version": "1.0.0"
+    },
+    {
+      "name": "kibitzer",
+      "source": "./plugins/kibitzer",
+      "description": "Tool call observer — suggests structured alternatives when you reach for grep",
+      "version": "1.0.0"
+    }
+  ]
+}

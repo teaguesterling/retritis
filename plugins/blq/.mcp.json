@@ -1,0 +1,7 @@
+{
+  "blq_mcp": {
+    "command": "blq",
+    "args": ["mcp", "serve"],
+    "type": "stdio"
+  }
+}

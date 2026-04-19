@@ -1,0 +1,7 @@
+{
+  "jetsam": {
+    "command": "jetsam",
+    "args": ["serve"],
+    "type": "stdio"
+  }
+}

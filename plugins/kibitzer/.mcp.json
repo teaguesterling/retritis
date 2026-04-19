@@ -1,0 +1,7 @@
+{
+  "kibitzer": {
+    "command": "kibitzer",
+    "args": ["mcp", "serve"],
+    "type": "stdio"
+  }
+}

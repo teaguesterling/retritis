@@ -1,0 +1,13 @@
+{
+  "name": "kibitzer",
+  "description": "Tool call observer — watches patterns and suggests structured alternatives",
+  "version": "1.0.0",
+  "author": {
+    "name": "Teague Sterling",
+    "email": "teaguesterling@users.noreply.github.com"
+  },
+  "homepage": "https://github.com/teague/kibitzer",
+  "repository": "https://github.com/teague/kibitzer",
+  "license": "MIT",
+  "keywords": ["observation", "coaching", "mcp", "kibitzer"]
+}

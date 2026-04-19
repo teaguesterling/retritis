@@ -1,0 +1,17 @@
+{
+  "description": "blq plugin - warn on build/test commands run through Bash",
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "${CLAUDE_PLUGIN_ROOT}/hooks/blq-warn.sh",
+            "timeout": 5
+          }
+        ]
+      }
+    ]
+  }
+}

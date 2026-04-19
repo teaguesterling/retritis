@@ -1,0 +1,13 @@
+{
+  "name": "squackit",
+  "description": "Semi-QUalified Agent Companion Kit — code intelligence MCP server with smart defaults and session caching",
+  "version": "1.0.0",
+  "author": {
+    "name": "Teague Sterling",
+    "email": "teaguesterling@users.noreply.github.com"
+  },
+  "homepage": "https://github.com/teague/squackit",
+  "repository": "https://github.com/teague/squackit",
+  "license": "MIT",
+  "keywords": ["code-intelligence", "mcp", "ast", "duckdb", "squackit"]
+}
