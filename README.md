@@ -233,6 +233,12 @@ claude      # tools are available immediately
 
 ---
 
+## Clinical examples
+
+See **[EXAMPLES.md](EXAMPLES.md)** for seven case studies showing how the tools compose in practice: bug diagnosis, blast-radius refactoring, self-fixing errors, codebase tours, unified policy, crash recovery, and teaching a model your API.
+
+---
+
 ## Prognosis
 
 There is no cure. The condition is progressive — each tool you build reveals new friction, which produces new tools. This is by design. The ratchet only turns one direction.
