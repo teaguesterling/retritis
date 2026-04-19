@@ -14,70 +14,155 @@ You have retritis if:
 - You've lost work to a session crash and reconstructed it by hand
 - You've written a bash script to avoid writing a bash script
 
-## Treatment
+## Etiology
 
-Each tool in the suite addresses a specific symptom. None of them came from a plan. They came from the moment where you think "I've done this enough times."
+The condition is occupational. It develops through repeated exposure to the seam between human and agent workflows — the place where structured tools would help but don't exist yet, where context is lost between sessions, where mechanical work consumes attention that should go to the actual problem.
 
-### Parsing & querying
+Each tool in this suite addresses a specific symptom. None of them came from a plan. They came from the moment where you think "I've done this enough times." Friction produces signal. Signal crystallizes into a tool. The tool reduces friction. New friction appears at a higher level. Repeat.
 
-| Tool | Symptom | Treatment |
-|------|---------|-----------|
-| [sitting_duck](https://github.com/teague/sitting-duck) | "I need to find all functions matching X across 27 languages" | CSS selectors over tree-sitter ASTs in DuckDB |
-| [pluckit](https://github.com/teague/pluckit) | "I want to query, mutate, test, and commit code in one chain" | jQuery for source code. Fluent API over sitting_duck |
+This is the ratchet. It only turns one direction.
 
-### Code intelligence
+---
 
-| Tool | Symptom | Treatment |
-|------|---------|-----------|
-| [squackit](https://github.com/teague/squackit) | "Claude keeps grepping for definitions and missing half of them" | MCP server + CLI with smart defaults, session caching, compound workflows |
-| [fledgling](https://github.com/teague/source-sextant) | "I need cross-file resolution, call graphs, structural similarity" | SQL macros over DuckDB. The query layer underneath squackit |
+## Pathology
 
-### History
+The suite has a shared substrate: [DuckDB](https://duckdb.org). Code structure, git history, build logs, session traces, policy decisions — all queryable with SQL, all joinable across tools. This isn't an architectural choice that was made up front. It's what fell out of building tools that needed to share structured data without a server.
 
-| Tool | Symptom | Treatment |
-|------|---------|-----------|
-| [duck_tails](https://github.com/teague/duck-tails) | "Who changed this function and when?" | Git history as queryable DuckDB tables |
+```
+                    ┌─────────────────────────────────────────┐
+                    │              DuckDB substrate            │
+                    │  ASTs · git history · build logs · traces │
+                    └──────┬──────────┬──────────┬────────────┘
+                           │          │          │
+              ┌────────────┤          │          ├────────────┐
+              │            │          │          │            │
+         sitting_duck  duck_tails    blq    agent-riggs   ducklog
+         (AST query)   (git query) (build)  (traces)     (policy)
+              │                       │
+          ┌───┴───┐              ┌────┴────┐
+          │       │              │         │
+       pluckit  fledgling    kibitzer   ratchet-detect
+       (fluent)  (macros)    (observe)  (candidates)
+          │       │
+          └───┬───┘
+              │
+           squackit
+        (MCP + CLI)
+```
 
-### Build & test
+The tools compose because they share a data layer, not because they were designed to compose. blq captures a build failure as a structured event. pluckit can select the failing code using that event as a compound selector. agent-riggs can record the fix as a trace. kibitzer can suggest the pattern next time. The pipeline emerges from the substrate.
 
-| Tool | Symptom | Treatment |
-|------|---------|-----------|
-| [blq](https://github.com/teague/lq) | "I keep copy-pasting build output into the chat" | Build log capture, sandbox presets, structured query. MCP or CLI |
+---
 
-### Policy
+## Treatment plan
 
-| Tool | Symptom | Treatment |
-|------|---------|-----------|
-| [umwelt](https://github.com/teague/umwelt) | "Permissions are spread across 5 different systems" | CSS-syntax policy language with Datalog semantics over Beer's VSM |
-| [ducklog](https://github.com/teague/ducklog) | "I need to query policy decisions with plain SQL" | Compiles umwelt policy to DuckDB. Authorization as materialized views |
+### Layer 1: Query the code
 
-### Git workflow
+Before you can fix, refactor, or understand anything, you need reliable facts about what the code actually is.
 
-| Tool | Symptom | Treatment |
-|------|---------|-----------|
-| [jetsam](https://github.com/teague/jetsam) | "Did I forget to push?" | Save, sync, ship. Preview plans before execution |
+| Tool | What it does | Install |
+|------|-------------|---------|
+| [sitting_duck](https://github.com/teague/sitting-duck) | CSS selectors over tree-sitter ASTs in DuckDB. 27 languages. The query engine underneath everything else. | `pip install sitting-duck` |
+| [fledgling](https://github.com/teague/source-sextant) | SQL macros for definitions, callers, cross-file resolution, structural similarity. | `pip install fledgling` |
+| [squackit](https://github.com/teague/squackit) | MCP server + CLI wrapping fledgling with smart defaults, session caching, compound workflows, and token-aware output. The surface most users interact with. | `pip install squackit` |
+| [pluckit](https://github.com/teague/pluckit) | jQuery for source code. Fluent chains: select → filter → mutate → test → save. | `pip install pluckit` |
+| [duck_tails](https://github.com/teague/duck-tails) | Git history as queryable DuckDB tables. Per-file, per-commit, per-function. | `pip install duck-tails` |
 
-### Generation
+**How they compose:** sitting_duck parses code into ASTs. fledgling adds cross-file query macros. squackit wraps both for agents and humans. pluckit adds a fluent mutation layer on top. duck_tails adds the time dimension. All share the DuckDB substrate — a single query can join AST structure with git history.
 
-| Tool | Symptom | Treatment |
-|------|---------|-----------|
-| [lackpy](https://github.com/teague/lackpy) | "I want a local model that knows my tool APIs" | Micro-inferencer. Qwen 2.5 Coder 3B, local, $0 |
+### Layer 2: Run and observe
 
-### Observation & learning
+Build, test, and capture what happens. The seam between human and agent: structured results both sides can query.
 
-| Tool | Symptom | Treatment |
-|------|---------|-----------|
-| [kibitzer](https://github.com/teague/kibitzer) | "Claude keeps using grep when there's a structured tool for that" | Watches tool calls, suggests alternatives, coaches toward better patterns |
-| [agent-riggs](https://github.com/teague/agent-riggs) | "The same effective pattern keeps getting rediscovered across sessions" | Cross-session trace analysis, pattern extraction, template promotion |
+| Tool | What it does | Install |
+|------|-------------|---------|
+| [blq](https://github.com/teague/lq) | Build log capture, sandbox presets, structured query. Run builds, query errors, analyze results — all through MCP or CLI. | `pip install blq-cli` |
+| [kibitzer](https://github.com/teague/kibitzer) | Watches agent tool calls, suggests structured alternatives, coaches toward better patterns. | `pip install kibitzer` |
+| [agent-riggs](https://github.com/teague/agent-riggs) | Cross-session trace analysis, pattern extraction, template promotion. | `pip install agent-riggs` |
+| [ratchet-detect](https://github.com/teague/ratchet-detect) | Analyzes Claude Code conversation logs and finds ratchet candidates. One command, actionable report. | `pip install ratchet-detect` |
 
-### Human-side palliatives
+**How they compose:** blq captures build events. kibitzer observes tool-use patterns in the current session. agent-riggs analyzes patterns across sessions. ratchet-detect finds the patterns worth promoting. The observation data feeds back into every other layer — blq errors become pluckit selectors, agent-riggs traces become lackpy templates, kibitzer suggestions become strategy instructions.
 
-| Tool | Symptom | Treatment |
-|------|---------|-----------|
-| tmux-use | "Which tmux session was I in?" | Color-coded session management |
-| git-wt | "Stash, switch, pop, merge, switch back" | Git worktree wrapper for structured layouts |
-| ffs | "Claude crashed mid-task and I lost everything" | Find Failed Sessions. Crash recovery with runbooks |
-| init-dev | "Setting up fledgling + blq + jetsam for the 15th time" | Project bootstrapping with auto-detection |
+### Layer 3: Act on what you know
+
+Git workflows, code generation, policy enforcement.
+
+| Tool | What it does | Install |
+|------|-------------|---------|
+| [jetsam](https://github.com/teague/jetsam) | Git workflow accelerator. Save, sync, ship. Preview plans before execution. | `pip install jetsam-mcp` |
+| [lackpy](https://github.com/teague/lackpy) | Micro-inferencer that translates natural language intent into pluckit chains. Qwen 2.5 Coder 3B, local, $0. | `pip install lackpy` |
+| [umwelt](https://github.com/teague/umwelt) | CSS-syntax policy language with Datalog semantics. Unified authorization across principal, tool, file, mode, and model. | `pip install umwelt` |
+| [ducklog](https://github.com/teague/ducklog) | Compiles umwelt policy to DuckDB. Authorization as materialized views. Every enforcement tool reads policy with plain SQL. | `pip install ducklog` |
+
+**How they compose:** jetsam handles the git ceremony. lackpy generates pluckit chains from intent, using a fine-tuned local model trained on the pluckit API spec. umwelt declares what's allowed. ducklog compiles it so every tool — nsjail, kibitzer, lackpy's validator — can read the same policy with a SQL query.
+
+### Layer 4: Human-side palliatives
+
+Not everything needs an MCP server. Some symptoms just need a script.
+
+| Tool | What it does |
+|------|-------------|
+| **tmux-use** | Color-coded terminal session management. Eliminate "which session was I in?" |
+| **git-wt** | Git worktree wrapper for structured layouts. Eliminate stash/switch/pop dances. |
+| **ffs** | Find Failed Sessions. Crash recovery for Claude Code with runbooks. |
+| **init-dev** | Project bootstrapping. Auto-detects project type, sets up fledgling + blq + jetsam. |
+
+---
+
+## A day in treatment
+
+What an actual work session looks like — not a polished demo, but the messy reality of how these tools compose.
+
+### Morning: starting a feature
+
+`tmux-use` opens the project session. `git-wt` creates a worktree for the feature branch — isolated from main. `init-dev` already ran when the project was created, so blq, fledgling, and jetsam are configured.
+
+Describe the feature to Claude. Claude uses squackit to understand the code — `find_definitions` for entry points, `find_callers` to map the blast radius, `code_structure` for an overview. Thirty seconds, reliable map. Without it, Claude would grep around for a few minutes and build a less accurate picture.
+
+### Midday: building
+
+You're editing code. Claude is editing code. Same worktree, different files.
+
+Claude runs tests through blq: `blq run test`. You can see the results too — `blq errors` shows failures, `blq output` shows the full log. If Claude gets stuck, you check `blq errors` yourself, see the same structured data, and give specific guidance. No copy-pasting. No "can you show me the full output?" The shared tool is the shared context.
+
+kibitzer fires periodically. "You've made 5 edits without running tests." Sometimes useful. Sometimes ignored. The observations log either way — follow rates tell you which suggestions are actually helpful.
+
+### Afternoon: integration
+
+The feature works. `jetsam save 'feat: add timeout parameter'` — preview shows 4 files staged, commit message generated from the diff. Confirm. `jetsam sync` rebases on main. `jetsam ship` opens the PR.
+
+If agent-riggs is active, the session trace is already analyzed: which tool sequences were effective, which patterns repeated, which could be promoted to templates. Next time someone does a similar feature, the tooling is slightly more prepared.
+
+### The accumulation
+
+No single tool here is impressive. Session management? Worktree wrappers? A build log viewer? Each one is a small thing.
+
+But the accumulation changes what kind of work is possible. You don't think about terminal layout. You don't think about branch switching. You don't think about how to share build results with Claude. You don't think about crash recovery. Each tool removed one friction point, and the freed attention compounds.
+
+---
+
+## The ratchet underneath
+
+The suite has a theoretical frame: Stafford Beer's [Viable System Model](https://en.wikipedia.org/wiki/Viable_system_model) (VSM). Every viable system — biological, organizational, or computational — needs the same five functions. The retritis suite maps to them:
+
+| VSM | Function | Retritis tool |
+|-----|----------|--------------|
+| **S1** Operations | The tools that do the work | jetsam (git), blq (build), pluckit (code mutation), lackpy (generation) |
+| **S2** Coordination | Routes messages, enforces permissions | The harness (Claude Code) + plugin hooks |
+| **S3** Control | Watches trajectory, allocates resources, adjusts configuration | kibitzer (in-session), agent-riggs (cross-session) |
+| **S3*** Audit | Observes operations directly | blq (build audit), fledgling (conversation audit), ratchet-detect |
+| **S4** Intelligence | Environmental scanning, adaptation | The LLM itself |
+| **S5** Identity | What the system is for, whose values it serves | The human. umwelt encodes their policy |
+
+Current agent architectures have S1, S2, S4, S5 — but only a partial S3. The controller that watches the failure stream and intervenes when the trajectory goes wrong is currently performed manually by the human, or not at all. Retritis fills the gap.
+
+The observation tools (S3/S3\*) produce structured data. The ratchet mechanism promotes repeated patterns from observations to templates to tools. Each promotion removes a friction point and frees attention for higher-level work. The ratchet only turns one direction: things that work get crystallized; things that don't get observed and eventually addressed.
+
+```
+friction → observation → crystallization → tool → less friction → repeat
+    ↑                                                              │
+    └──────────────────────────────────────────────────────────────┘
+```
 
 ---
 
@@ -98,19 +183,61 @@ The quickest way to start treatment. Install the plugin marketplace, then pick y
 ```
 
 Each plugin bundles:
-- **MCP server config** — tool availability
+
+- **MCP server config** — tool availability, no manual `.mcp.json` editing
 - **Skills** — routing instructions ("instead of grep, use find_definitions")
 - **Hooks** (optional) — gentle warnings when you reach for bash instead of the structured tool
 
-See [plugins/](plugins/) for the full formulary.
+### What a plugin looks like
+
+```
+plugins/<name>/
+  .claude-plugin/plugin.json      — manifest (name, description, version)
+  .mcp.json                       — MCP server config
+  skills/<name>-workflow/SKILL.md  — routing table + tool reference
+  hooks/                          — optional
+    hooks.json                    — hook registration
+    <name>-warn.sh                — hook script
+```
+
+### Prerequisites
+
+Each tool is its own package. The plugin just wires it into Claude Code.
+
+```bash
+pip install blq-cli          # blq
+pip install jetsam-mcp       # jetsam
+pip install fledgling        # fledgling
+pip install squackit         # squackit
+pip install kibitzer         # kibitzer
+```
+
+### Quick start
+
+```bash
+# 1. Install the core tools
+pip install blq-cli jetsam-mcp fledgling squackit
+
+# 2. Add the plugin marketplace
+/plugin marketplace add teaguesterling/retritis
+
+# 3. Install plugins
+/plugin install blq@retritis jetsam@retritis fledgling@retritis squackit@retritis
+
+# 4. Bootstrap your project
+init-dev    # auto-detects project type, configures tools
+
+# 5. Start working
+claude      # tools are available immediately
+```
 
 ---
 
 ## Prognosis
 
-There is no cure. The condition is progressive — each tool you build reveals new friction, which produces new tools. This is by design. The [ratchet](https://judgementalmonad.com/blog/fuel/index) only turns one direction.
+There is no cure. The condition is progressive — each tool you build reveals new friction, which produces new tools. This is by design. The ratchet only turns one direction.
 
-The good news: the symptoms become manageable. A year ago, half the time with Claude was infrastructure. Now it's handled. The freed attention compounds.
+The good news: the symptoms become manageable. A year ago, half my time with Claude was infrastructure — setting up the environment, sharing context, recovering from crashes, managing git state. Now that's handled. The freed attention compounds.
 
 The bad news: you will name things like "retritis" and think it's funny.
 
@@ -119,6 +246,11 @@ The bad news: you will name things like "retritis" and think it's funny.
 ## Further reading
 
 - [judgementalmonad.com](https://judgementalmonad.com) — The blog series behind the suite
-- [Ratchet Fuel](https://judgementalmonad.com/blog/fuel/index) — The agent-side ratchet
 - [The Tools That Built Themselves](https://judgementalmonad.com/blog/tools/the-tools-that-built-themselves) — How and why these tools exist
-- [The Ma of Multi-Agent Systems](https://judgementalmonad.com/blog/ma/index) — The theory underneath
+- [Ratchet Fuel](https://judgementalmonad.com/blog/fuel/index) — The agent-side ratchet mechanism
+- [The Ma of Multi-Agent Systems](https://judgementalmonad.com/blog/ma/index) — Beer's VSM applied to agent architecture
+- [An LLM Is a Subject of Your Policy](https://judgementalmonad.com/drafts/an-llm-is-a-subject-of-your-policy) — Why authorization needs new axes
+
+## License
+
+MIT
