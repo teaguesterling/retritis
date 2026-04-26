@@ -170,53 +170,78 @@ duck_tails.hot_files(days=30)
 
 **Treatment:**
 
-```css
-/* umwelt policy — one file, all boundaries */
+```yaml
+# delegate.world.yml — declare what exists
+tools: [Read, Edit, Bash, Write]
+modes: [implement, review]
+principal: Teague
 
-/* Default: nothing is editable */
-file { editable: false; }
+entities:
+  - type: tool
+    id: Bash
+    classes: [dangerous]
+```
+
+```css
+/* policy.umw — one file, all boundaries */
+
+/* Default: everything visible and allowed */
+tool { visible: true; allow: true; max-level: 8; }
+
+/* Dangerous tools are capped */
+tool.dangerous { max-level: 3; }
+
+/* In review mode, most tools are denied */
+mode#review tool { allow: false; }
+mode#review tool#Read { allow: true; }
 
 /* Source code is editable in implement mode */
-mode.implement file[path~="src/**/*.py"] { editable: true; }
+mode#implement file:glob("src/**/*.py") { editable: true; }
 
 /* Tests are always editable */
-file[path~="tests/**"] { editable: true; }
+file:glob("tests/**") { editable: true; }
 
-/* Auth files require explicit approval */
-file[path="src/core/auth.py"] {
-    editable: true;
-    requires-approval: true;
-}
-
-/* Bash is restricted to safe commands */
-tool#Bash {
-    allowed-commands: "pytest", "ruff", "black", "git status", "git diff";
-}
-
-/* The local model gets a narrower set of tools */
-inferencer.local tool { available: false; }
-inferencer.local tool#Edit, inferencer.local tool#Read { available: true; }
+/* Principal-gated: Teague gets extra visibility */
+principal#Teague tool { visible: true; }
 ```
 
-```bash
-# umwelt compiles the policy to SQLite
-$ umwelt compile policy.umw -o policy.db
+```python
+from umwelt.policy import PolicyEngine
 
-# Every enforcement tool has an umwelt plugin that defines its world state
-# and reads its policy slice with plain SQL
-$ sqlite3 policy.db "SELECT * FROM permissions WHERE file_path = 'src/core/auth.py'"
-# → editable: true, requires_approval: true, mode: implement
+engine = PolicyEngine.from_files(
+    world="delegate.world.yml",
+    stylesheet="policy.umw",
+)
 
-# Each tool queries its own view:
-#   kibitzer reads kibitzer_config to know what to warn about
-#   nsjail reads nsjail_config to know what to mount
-#   lackpy reads lackpy_config to know what operations are legal
-# Same database, different views. Each plugin defines its own world state.
+# What does the policy say?
+engine.resolve(type="tool", id="Bash", property="max-level")
+# → "3"
+
+# Context qualifiers gate by mode, principal, or any cross-taxon entity
+engine.resolve(
+    type="tool", id="Bash", property="allow",
+    context={"mode": "review"},
+)
+# → "false"
+
+# Why did that value win? Full audit trail.
+trace = engine.trace(type="tool", id="Bash", property="allow",
+                     context={"mode": "review"})
+# → Winner: "false" (spec=[0,1,1] rule=2 policy.umw:8)
+#   Runner-up: "true" (spec=[0,0,1] rule=1 policy.umw:4)
+
+# Each consumer queries its own slice:
+#   kibitzer: engine.check(type="tool", id="Bash", allow="true")
+#   sandbox:  engine.resolve_all(type="dir")
+#   lackpy:   engine.resolve_all(type="tool")
+# Same compiled database, different consumers reading different views.
 ```
 
-**What happened:** One policy file. umwelt compiles it, and each tool's plugin defines the world state it cares about (filesystem paths, tool availability, resource limits) and reads its own policy slice. Change the policy in one place, every tool picks it up. The CSS syntax means both humans and LLMs read it fluently — no new DSL to learn.
+**What happened:** One world file declares what exists. One stylesheet declares the rules. umwelt compiles both to SQLite, resolves the cascade (specificity + document order, per-property, per-entity), and the PolicyEngine answers queries. Each consumer — kibitzer, lackpy, a sandbox builder — asks the PolicyEngine what the resolved policy says, and acts on the answer. Nobody touches the parser or compiler. Change the policy in one place, every consumer picks it up.
 
-**The disconnect this solves:** "The agent inherits the user's permissions" (principal side), "the tool is restricted to these operations" (action side), "the file system is mounted read-only" (resource side) — three separate discussions that are actually one policy question. umwelt makes it one answer.
+**The key insight:** Cross-taxon selectors like `mode#review tool` and `principal#Teague tool` are generic context qualifiers, not hardcoded special cases. The same mechanism works for any entity type used as a gating condition — mode, principal, world environment, or anything a consumer registers. Core umwelt is vocabulary-agnostic; all entity types come from consumers via the registry.
+
+**The disconnect this solves:** "The agent inherits the user's permissions" (principal side), "the tool is restricted to these operations" (action side), "the file system is mounted read-only" (resource side) — three separate discussions that are actually one policy question. umwelt makes it one answer. See the [Policy Layer](https://judgementalmonad.com/blog/policy/) series for the full argument.
 
 ---
 
@@ -317,7 +342,7 @@ Start with the minimum effective dose:
 - `pluckit` — if you want fluent code mutation chains
 
 **Experimental treatment (when you're ready for the theory):**
-- `umwelt` — if you want unified policy (each tool has its own plugin)
+- `umwelt` — if you want unified policy with the PolicyEngine API. Declare entities in a world file, write rules in CSS syntax, query resolved policy through `engine.resolve()`. Generic context qualifiers let you gate rules on mode, principal, or any cross-taxon entity.
 - `lackpy` — if you want a local model that knows your APIs
 
 The tools are independent. Install one, install all, install them in any order. The composition emerges from the shared substrate, not from a required install sequence.

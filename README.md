@@ -26,7 +26,7 @@ This is the ratchet. It only turns one direction.
 
 ## Pathology
 
-The suite has a shared substrate: [DuckDB](https://duckdb.org). Code structure, git history, build logs, session traces, policy decisions — all queryable with SQL, all joinable across tools. This isn't an architectural choice that was made up front. It's what fell out of building tools that needed to share structured data without a server.
+The suite has two shared substrates, both queryable with SQL. [DuckDB](https://duckdb.org) stores facts about code, builds, and sessions — ASTs, git history, build logs, traces, all joinable across tools. [SQLite](https://sqlite.org) stores resolved policy — compiled by [umwelt](https://github.com/teaguesterling/umwelt) from CSS-syntax stylesheets, queried by every consumer through the PolicyEngine API. Neither substrate was an architectural choice made up front. Both fell out of building tools that needed to share structured data without a server.
 
 ```
                     ┌─────────────────────────────────────────┐
@@ -38,19 +38,26 @@ The suite has a shared substrate: [DuckDB](https://duckdb.org). Code structure, 
               │            │          │          │            │
          sitting_duck  duck_tails    blq    agent-riggs   umwelt
          (AST query)   (git query) (build)  (traces)     (policy)
-              │                       │
-          ┌───┴───┐              ┌────┴────┐
-          │       │              │         │
-       pluckit  fledgling    kibitzer   ratchet-detect
-       (fluent)  (macros)    (observe)  (candidates)
-          │       │
-          └───┬───┘
-              │
-           squackit
-        (MCP + CLI)
+              │                       │            │
+          ┌───┴───┐              ┌────┴────┐       │
+          │       │              │         │       │
+       pluckit  fledgling    kibitzer   ratchet    │
+       (fluent)  (macros)    (observe)  -detect    │
+          │       │                                │
+          └───┬───┘                                │
+              │              ┌─────────────────────┘
+           squackit          │
+        (MCP + CLI)      PolicyEngine
+                         (SQLite compiled DB)
+                              │
+               ┌──────────────┼──────────────┐
+               │              │              │
+           kibitzer       lackpy         sandbox
+           (what's      (what ops      (what's
+            allowed?)    are legal?)    mounted?)
 ```
 
-The tools compose because they share a data layer, not because they were designed to compose. blq captures a build failure as a structured event. pluckit can select the failing code using that event as a compound selector. agent-riggs can record the fix as a trace. kibitzer can suggest the pattern next time. The pipeline emerges from the substrate.
+Two substrates, one grammar. The DuckDB layer stores facts about code, builds, and sessions. The SQLite layer (compiled by umwelt) stores resolved policy. Both are queryable with SQL. The tools compose because they share data layers, not because they were designed to compose. blq captures a build failure as a structured event. pluckit can select the failing code using that event as a compound selector. agent-riggs can record the fix as a trace. kibitzer can suggest the pattern next time — and check whether the suggested tool is even allowed by the current policy. The pipeline emerges from the substrates.
 
 ---
 
@@ -81,7 +88,7 @@ Build, test, and capture what happens. The seam between human and agent: structu
 | [agent-riggs](https://github.com/teague/agent-riggs) | Cross-session trace analysis, pattern extraction, template promotion. | `pip install agent-riggs` |
 | [ratchet-detect](https://github.com/teague/ratchet-detect) | Analyzes Claude Code conversation logs and finds ratchet candidates. One command, actionable report. | `pip install ratchet-detect` |
 
-**How they compose:** blq captures build events. kibitzer observes tool-use patterns in the current session. agent-riggs analyzes patterns across sessions. ratchet-detect finds the patterns worth promoting. The observation data feeds back into every other layer — blq errors become pluckit selectors, agent-riggs traces become lackpy templates, kibitzer suggestions become strategy instructions.
+**How they compose:** blq captures build events. kibitzer observes tool-use patterns in the current session. agent-riggs analyzes patterns across sessions. ratchet-detect finds the patterns worth promoting. The observation data feeds back into every other layer — blq errors become pluckit selectors, agent-riggs traces become lackpy templates, kibitzer suggestions become strategy instructions. With umwelt, kibitzer can also check whether a suggested tool is *allowed* by the current policy before suggesting it — observation informed by authorization.
 
 ### Layer 3: Act on what you know
 
@@ -91,9 +98,9 @@ Git workflows, code generation, policy enforcement.
 |------|-------------|---------|
 | [jetsam](https://github.com/teague/jetsam) | Git workflow accelerator. Save, sync, ship. Preview plans before execution. | `pip install jetsam-mcp` |
 | [lackpy](https://github.com/teague/lackpy) | Micro-inferencer that translates natural language intent into pluckit chains. Qwen 2.5 Coder 3B, local, $0. | `pip install lackpy` |
-| [umwelt](https://github.com/teague/umwelt) | CSS-syntax policy language with Datalog semantics and built-in SQLite compiler. Each tool defines its own world state via plugins and queries resolved policy with plain SQL. Unified authorization across principal, tool, file, mode, and model. | `pip install umwelt` |
+| [umwelt](https://github.com/teaguesterling/umwelt) | CSS-syntax policy engine with vocabulary-agnostic core and built-in SQLite compiler. Selectors + cascade resolve policy per-entity. Each consumer (kibitzer, lackpy, sandbox builders) queries resolved policy through the PolicyEngine API — never touches the parser or compiler directly. Generic context qualifiers let any cross-taxon entity (mode, principal, world) gate a rule. | `pip install umwelt` |
 
-**How they compose:** jetsam handles the git ceremony. lackpy generates pluckit chains from intent, using a fine-tuned local model trained on the pluckit API spec. umwelt declares what's allowed and compiles it to SQLite — each tool has an umwelt plugin that defines its world state and reads its policy slice with plain SQL. One policy, many consumers.
+**How they compose:** jetsam handles the git ceremony. lackpy generates pluckit chains from intent, using a fine-tuned local model trained on the pluckit API spec. umwelt declares what's allowed and compiles it to SQLite — the PolicyEngine is the consumer-facing API. Each consumer queries its own slice: kibitzer asks "is tool X allowed?", a sandbox builder asks "what mounts are writable?", lackpy asks "what operations are legal?" Same compiled database, different consumers reading different views. One policy, many enforcement points.
 
 ### Layer 4: Human-side palliatives
 
@@ -105,6 +112,66 @@ Not everything needs an MCP server. Some symptoms just need a script.
 | **git-wt** | Git worktree wrapper for structured layouts. Eliminate stash/switch/pop dances. |
 | **ffs** | Find Failed Sessions. Crash recovery for Claude Code with runbooks. |
 | **init-dev** | Project bootstrapping. Auto-detects project type, sets up fledgling + blq + jetsam. |
+
+---
+
+## The connectivity model
+
+The tools above compose through two shared substrates and one shared grammar. Understanding the connections explains why the suite is more than the sum of its parts.
+
+### Two substrates
+
+**DuckDB** (facts about code and sessions): sitting_duck parses ASTs. duck_tails imports git history. fledgling adds cross-file query macros. blq captures build events. agent-riggs records traces. All land in the same DuckDB instance — a single query can join AST structure with git blame with test failures.
+
+**SQLite** (resolved policy): umwelt compiles a world file + stylesheet into a SQLite database. The compilation pipeline parses CSS selectors, evaluates them against declared entities, resolves the cascade (specificity + document order), and writes the result to `resolved_properties`. Every consumer reads from this database through the PolicyEngine API.
+
+### One grammar
+
+umwelt uses CSS selectors because they're the best existing grammar for "select entities in a structured world and attach properties to the matches." The same selectors work across taxa:
+
+- `file:glob("src/**/*.py")` — selects files in the world taxon
+- `tool#Bash` — selects a tool in the capability taxon
+- `mode#review tool.dangerous` — cross-taxon: "when mode is review, for dangerous tools"
+
+Cross-taxon selectors are **context qualifiers** — they gate a rule on a condition from another namespace. The mechanism is generic: `mode#review`, `principal#Teague`, `world#ci` all work the same way. No entity type is special-cased in core.
+
+### Data flows
+
+```
+blq captures test failure
+    → error has file path, line number, function name
+    → squackit resolves the function's definition + callers
+    → pluckit selects the code and applies a fix chain
+    → blq re-runs tests to verify
+    → jetsam commits the fix
+    → agent-riggs records the trace (error → query → fix → verify → commit)
+    → ratchet-detect finds the pattern is recurring
+    → kibitzer suggests the fix chain next time the pattern appears
+
+umwelt provides the policy layer throughout:
+    → kibitzer checks: is this tool allowed? (engine.check)
+    → sandbox builder reads: what mounts are writable? (engine.resolve_all)
+    → lackpy reads: what operations are legal? (engine.resolve_all)
+    → trace shows why: engine.trace produces full audit trail
+```
+
+### The PolicyEngine pattern
+
+umwelt declares, consumers enforce. The integration point is always the same:
+
+```python
+from umwelt.policy import PolicyEngine
+
+engine = PolicyEngine.from_db("compiled.db")
+
+# Consumer asks what the policy says
+engine.resolve(type="tool", id="Bash", property="allow")
+
+# Consumer acts on the answer
+# umwelt never calls the tool — the consumer does
+```
+
+This is a pull model: consumers query policy on demand. They don't register callbacks or subscribe to events. The compiled database is the shared artifact. Multiple consumers can read the same database simultaneously, each querying its own slice.
 
 ---
 
@@ -147,13 +214,13 @@ The suite has a theoretical frame: Stafford Beer's [Viable System Model](https:/
 | VSM | Function | Retritis tool |
 |-----|----------|--------------|
 | **S1** Operations | The tools that do the work | jetsam (git), blq (build), pluckit (code mutation), lackpy (generation) |
-| **S2** Coordination | Routes messages, enforces permissions | The harness (Claude Code) + plugin hooks |
+| **S2** Coordination | Routes messages, enforces permissions | The harness (Claude Code) + plugin hooks + umwelt (compiled policy) |
 | **S3** Control | Watches trajectory, allocates resources, adjusts configuration | kibitzer (in-session), agent-riggs (cross-session) |
 | **S3*** Audit | Observes operations directly | blq (build audit), fledgling (conversation audit), ratchet-detect |
 | **S4** Intelligence | Environmental scanning, adaptation | The LLM itself |
 | **S5** Identity | What the system is for, whose values it serves | The human. umwelt encodes their policy |
 
-Current agent architectures have S1, S2, S4, S5 — but only a partial S3. The controller that watches the failure stream and intervenes when the trajectory goes wrong is currently performed manually by the human, or not at all. Retritis fills the gap.
+Current agent architectures have S1, S4, S5 — but only partial S2 and S3. The coordination function is limited to the harness's built-in permission model (hooks, allowlists); the control function is performed manually by the human or not at all. Retritis fills both gaps: umwelt provides declarative, auditable coordination (S2) — a policy compiled once and enforced at every tool boundary — while kibitzer and agent-riggs provide the observation and adjustment loop (S3).
 
 The observation tools (S3/S3\*) produce structured data. The ratchet mechanism promotes repeated patterns from observations to templates to tools. Each promotion removes a friction point and frees attention for higher-level work. The ratchet only turns one direction: things that work get crystallized; things that don't get observed and eventually addressed.
 
@@ -251,6 +318,7 @@ The bad news: you will name things like "retritis" and think it's funny.
 ## Further reading
 
 - [judgementalmonad.com](https://judgementalmonad.com) — The blog series behind the suite
+- [The Policy Layer](https://judgementalmonad.com/blog/policy/) — Why agent security needs a policy language, how CSS selectors + cascade resolve it, the seven authorization axes, and why umwelt uses the syntax it does (7 posts)
 - [The Tools That Built Themselves](https://judgementalmonad.com/blog/tools/the-tools-that-built-themselves) — How and why these tools exist
 - [Ratchet Fuel](https://judgementalmonad.com/blog/fuel/index) — The agent-side ratchet mechanism
 - [The Ma of Multi-Agent Systems](https://judgementalmonad.com/blog/ma/index) — Beer's VSM applied to agent architecture
