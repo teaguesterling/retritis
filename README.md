@@ -31,32 +31,32 @@ This is the ratchet. It only turns one direction.
 The suite has two shared substrates, both queryable with SQL. [DuckDB](https://duckdb.org) stores facts about code, builds, and sessions — ASTs, git history, build logs, traces, all joinable across tools. [SQLite](https://sqlite.org) stores resolved policy — compiled by [umwelt](https://github.com/teaguesterling/umwelt) from CSS-syntax stylesheets, queried by every consumer through the PolicyEngine API. Neither substrate was an architectural choice made up front. Both fell out of building tools that needed to share structured data without a server.
 
 ```
-                    ┌─────────────────────────────────────────┐
-                    │              DuckDB substrate            │
-                    │  ASTs · git history · build logs · traces │
-                    └──────┬──────────┬──────────┬────────────┘
-                           │          │          │
-              ┌────────────┤          │          ├────────────┐
-              │            │          │          │            │
-         sitting_duck  duck_tails    blq    agent-riggs   umwelt
-         (AST query)   (git query) (build)  (traces)     (policy)
-              │                       │                       │
-          ┌───┴───┐              ┌────┴────┐                  │
-          │       │              │         │                  │
-       pluckit  fledgling    kibitzer   ratchet               │
-       (fluent)  (macros)    (observe)  -detect               │
-          │       │                                           │
-          └───┬───┘                                           │
-              │                         ┌─────────────────────┘
-           squackit                     │
-        (MCP + CLI)                 PolicyEngine
-                                (SQLite compiled DB)
-                                        │
-                         ┌──────────────┼──────────────┐
-                         │              │              │
-                     kibitzer       lackpy         sandbox
-                    (what's      (what ops        (what's
-                     allowed?)    are legal?)      mounted?)
+                ┌──────────────────────────────────────────────────┐
+                │                  DuckDB substrate                 │
+                │    ASTs · git history · build logs · traces       │
+                └───┬──────────┬──────────┬──────────┬────────────┘
+                    │          │          │          │
+       ┌────────────┤          │          │          ├────────────┐
+       │            │          │          │          │            │
+  sitting_duck  duck_tails  duck_hunt  agent-riggs  │         umwelt
+  (AST parse)   (git query) (log parse) (traces)    │        (policy)
+       │                       │                    │            │
+   ┌───┴───┐                   │               ratchet           │
+   │       │                   │               -detect           │
+pluckit  fledgling        blq (build)                            │
+(fluent)  (macros)             │                                 │
+   │       │              ┌────┴────┐                            │
+   └───┬───┘              │         │                            │
+       │              kibitzer    (hooks)      ┌─────────────────┘
+    squackit          (observe)                │
+  (MCP + CLI)                             PolicyEngine
+                                       (SQLite compiled DB)
+                                               │
+                                ┌──────────────┼──────────────┐
+                                │              │              │
+                            kibitzer       lackpy         sandbox
+                           (what's      (what ops        (what's
+                            allowed?)    are legal?)      mounted?)
 ```
 
 Two substrates, one grammar. The DuckDB layer stores facts about code, builds, and sessions. The SQLite layer (compiled by umwelt) stores resolved policy. Both are queryable with SQL. The tools compose because they share data layers, not because they were designed to compose. blq captures a build failure as a structured event. pluckit can select the failing code using that event as a compound selector. agent-riggs can record the fix as a trace. kibitzer can suggest the pattern next time — and check whether the suggested tool is even allowed by the current policy. The pipeline emerges from the substrates.
@@ -71,13 +71,14 @@ Before you can fix, refactor, or understand anything, you need reliable facts ab
 
 | Tool | What it does | Install |
 |------|-------------|---------|
-| [sitting_duck](https://github.com/teague/sitting-duck) | CSS selectors over tree-sitter ASTs in DuckDB. 27 languages. The query engine underneath everything else. | `pip install sitting-duck` |
-| [fledgling](https://github.com/teague/source-sextant) | SQL macros for definitions, callers, cross-file resolution, structural similarity. | `pip install fledgling` |
-| [squackit](https://github.com/teague/squackit) | MCP server + CLI wrapping fledgling with smart defaults, session caching, compound workflows, and token-aware output. The surface most users interact with. | `pip install squackit` |
-| [pluckit](https://github.com/teague/pluckit) | jQuery for source code. Fluent chains: select → filter → mutate → test → save. | `pip install pluckit` |
-| [duck_tails](https://github.com/teague/duck-tails) | Git history as queryable DuckDB tables. Per-file, per-commit, per-function. | `pip install duck-tails` |
+| [sitting_duck](https://github.com/teaguesterling/sitting_duck) | CSS selectors over tree-sitter ASTs in DuckDB. 27 languages. The query engine underneath everything else. | `INSTALL sitting_duck FROM community;` |
+| [duck_tails](https://github.com/teaguesterling/duck_tails) | Git history as queryable DuckDB tables. Per-file, per-commit, per-function. | `INSTALL duck_tails FROM community;` |
+| [duck_hunt](https://github.com/teaguesterling/duck_hunt) | Log parsing for 90+ development tools and CI/CD systems. Structured extraction from build output. | `INSTALL duck_hunt FROM community;` |
+| [fledgling](https://github.com/teaguesterling/fledgling) | SQL macros for definitions, callers, cross-file resolution, structural similarity. | `pip install fledgling` |
+| [squackit](https://github.com/teaguesterling/squackit) | MCP server + CLI wrapping fledgling with smart defaults, session caching, compound workflows, and token-aware output. The surface most users interact with. | `pip install squackit` |
+| [pluckit](https://github.com/teaguesterling/pluckit) | jQuery for source code. Fluent chains: select → filter → mutate → test → save. | `pip install pluckit` |
 
-**How they compose:** sitting_duck parses code into ASTs. fledgling adds cross-file query macros. squackit wraps both for agents and humans. pluckit adds a fluent mutation layer on top. duck_tails adds the time dimension. All share the DuckDB substrate — a single query can join AST structure with git history.
+**How they compose:** sitting_duck parses code into ASTs. duck_tails adds git history. duck_hunt parses build logs (and is a dependency of blq). fledgling adds cross-file query macros on top of the DuckDB extensions. squackit wraps fledgling for agents and humans. pluckit adds a fluent mutation layer. All share the DuckDB substrate — a single query can join AST structure with git history with build output.
 
 ### Layer 2: Run and observe
 
@@ -85,10 +86,10 @@ Build, test, and capture what happens. The seam between human and agent: structu
 
 | Tool | What it does | Install |
 |------|-------------|---------|
-| [blq](https://github.com/teague/lq) | Build log capture, sandbox presets, structured query. Run builds, query errors, analyze results — all through MCP or CLI. | `pip install blq-cli` |
+| [blq](https://github.com/teaguesterling/blq-cli) | Build log capture, sandbox presets, structured query. Run builds, query errors, analyze results — all through MCP or CLI. | `pip install blq-cli` |
 | [kibitzer](https://github.com/teaguesterling/kibitzer) | Mode-aware tool-call observer. Path protection per mode, bash interception with observe/suggest/redirect ratchet, pattern-based coaching from ~250 experimental runs. Has a full umwelt plugin — registers mode properties (writable, strategy, coaching-frequency, max-turns) and consumes resolved policy via PolicyEngine. Shares a failure mode taxonomy with lackpy for correction hints. | `pip install kibitzer` |
-| [agent-riggs](https://github.com/teague/agent-riggs) | Cross-session trace analysis, pattern extraction, template promotion. | `pip install agent-riggs` |
-| [ratchet-detect](https://github.com/teague/ratchet-detect) | Analyzes Claude Code conversation logs and finds ratchet candidates. One command, actionable report. | `pip install ratchet-detect` |
+| [agent-riggs](https://github.com/teaguesterling/agent-riggs) | Cross-session trace analysis, pattern extraction, template promotion. | `pip install agent-riggs` |
+| [ratchet-detect](https://github.com/teaguesterling/ratchet-detect) | Analyzes Claude Code conversation logs and finds ratchet candidates. One command, actionable report. | `pip install ratchet-detect` |
 
 **How they compose:** blq captures build events. kibitzer observes tool-use patterns in the current session — with its umwelt plugin, mode configuration (writable paths, strategy text, coaching frequency) comes from the same policy database that controls tool access. agent-riggs analyzes patterns across sessions. ratchet-detect finds the patterns worth promoting. The observation data feeds back into every other layer — blq errors become pluckit selectors, agent-riggs traces become lackpy templates, kibitzer's correction hints feed into lackpy's PolicyLayer through a shared failure mode taxonomy. Observation informed by authorization, correction informed by observation.
 
@@ -98,7 +99,7 @@ Git workflows, code generation, policy enforcement.
 
 | Tool | What it does | Install |
 |------|-------------|---------|
-| [jetsam](https://github.com/teague/jetsam) | Git workflow accelerator. Save, sync, ship. Preview plans before execution. | `pip install jetsam-mcp` |
+| [jetsam](https://github.com/teaguesterling/jetsam) | Git workflow accelerator. Save, sync, ship. Preview plans before execution. | `pip install jetsam-mcp` |
 | [lackpy](https://github.com/teaguesterling/lackpy) | Micro-inferencer that translates natural language intent into sandboxed tool-composition programs. Local 1.5B model, AST-validated, traced execution. Has a PolicyLayer — ordered chain of policy sources (kit baseline → kibitzer coaching → umwelt restrictions) that resolves allowed tools, constraints, and prompt hints before generation. | `pip install lackpy` |
 | [umwelt](https://github.com/teaguesterling/umwelt) | CSS-syntax policy engine with vocabulary-agnostic core and built-in SQLite compiler. Selectors + cascade resolve policy per-entity. Each consumer (kibitzer, lackpy, sandbox builders) queries resolved policy through the PolicyEngine API — never touches the parser or compiler directly. Generic context qualifiers let any cross-taxon entity (mode, principal, world) gate a rule. | `pip install umwelt` |
 
@@ -358,7 +359,15 @@ plugins/<name>/
 
 Each tool is its own package. The plugin just wires it into Claude Code.
 
+```sql
+-- DuckDB extensions (install once inside duckdb)
+INSTALL sitting_duck FROM community;
+INSTALL duck_tails FROM community;
+INSTALL duck_hunt FROM community;
+```
+
 ```bash
+# Python packages
 pip install blq-cli          # blq
 pip install jetsam-mcp       # jetsam
 pip install fledgling        # fledgling
