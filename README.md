@@ -40,23 +40,23 @@ The suite has two shared substrates, both queryable with SQL. [DuckDB](https://d
               │            │          │          │            │
          sitting_duck  duck_tails    blq    agent-riggs   umwelt
          (AST query)   (git query) (build)  (traces)     (policy)
-              │                       │            │
-          ┌───┴───┐              ┌────┴────┐       │
-          │       │              │         │       │
-       pluckit  fledgling    kibitzer   ratchet    │
-       (fluent)  (macros)    (observe)  -detect    │
-          │       │                                │
-          └───┬───┘                                │
-              │              ┌─────────────────────┘
-           squackit          │
-        (MCP + CLI)      PolicyEngine
-                         (SQLite compiled DB)
-                              │
-               ┌──────────────┼──────────────┐
-               │              │              │
-           kibitzer       lackpy         sandbox
-           (what's      (what ops      (what's
-            allowed?)    are legal?)    mounted?)
+              │                       │                       │
+          ┌───┴───┐              ┌────┴────┐                  │
+          │       │              │         │                  │
+       pluckit  fledgling    kibitzer   ratchet               │
+       (fluent)  (macros)    (observe)  -detect               │
+          │       │                                           │
+          └───┬───┘                                           │
+              │                         ┌─────────────────────┘
+           squackit                     │
+        (MCP + CLI)                 PolicyEngine
+                                (SQLite compiled DB)
+                                        │
+                         ┌──────────────┼──────────────┐
+                         │              │              │
+                     kibitzer       lackpy         sandbox
+                    (what's      (what ops        (what's
+                     allowed?)    are legal?)      mounted?)
 ```
 
 Two substrates, one grammar. The DuckDB layer stores facts about code, builds, and sessions. The SQLite layer (compiled by umwelt) stores resolved policy. Both are queryable with SQL. The tools compose because they share data layers, not because they were designed to compose. blq captures a build failure as a structured event. pluckit can select the failing code using that event as a compound selector. agent-riggs can record the fix as a trace. kibitzer can suggest the pattern next time — and check whether the suggested tool is even allowed by the current policy. The pipeline emerges from the substrates.
