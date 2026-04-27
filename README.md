@@ -84,11 +84,11 @@ Build, test, and capture what happens. The seam between human and agent: structu
 | Tool | What it does | Install |
 |------|-------------|---------|
 | [blq](https://github.com/teague/lq) | Build log capture, sandbox presets, structured query. Run builds, query errors, analyze results — all through MCP or CLI. | `pip install blq-cli` |
-| [kibitzer](https://github.com/teague/kibitzer) | Watches agent tool calls, suggests structured alternatives, coaches toward better patterns. | `pip install kibitzer` |
+| [kibitzer](https://github.com/teaguesterling/kibitzer) | Mode-aware tool-call observer. Path protection per mode, bash interception with observe/suggest/redirect ratchet, pattern-based coaching from ~250 experimental runs. Has a full umwelt plugin — registers mode properties (writable, strategy, coaching-frequency, max-turns) and consumes resolved policy via PolicyEngine. Shares a failure mode taxonomy with lackpy for correction hints. | `pip install kibitzer` |
 | [agent-riggs](https://github.com/teague/agent-riggs) | Cross-session trace analysis, pattern extraction, template promotion. | `pip install agent-riggs` |
 | [ratchet-detect](https://github.com/teague/ratchet-detect) | Analyzes Claude Code conversation logs and finds ratchet candidates. One command, actionable report. | `pip install ratchet-detect` |
 
-**How they compose:** blq captures build events. kibitzer observes tool-use patterns in the current session. agent-riggs analyzes patterns across sessions. ratchet-detect finds the patterns worth promoting. The observation data feeds back into every other layer — blq errors become pluckit selectors, agent-riggs traces become lackpy templates, kibitzer suggestions become strategy instructions. With umwelt, kibitzer can also check whether a suggested tool is *allowed* by the current policy before suggesting it — observation informed by authorization.
+**How they compose:** blq captures build events. kibitzer observes tool-use patterns in the current session — with its umwelt plugin, mode configuration (writable paths, strategy text, coaching frequency) comes from the same policy database that controls tool access. agent-riggs analyzes patterns across sessions. ratchet-detect finds the patterns worth promoting. The observation data feeds back into every other layer — blq errors become pluckit selectors, agent-riggs traces become lackpy templates, kibitzer's correction hints feed into lackpy's PolicyLayer through a shared failure mode taxonomy. Observation informed by authorization, correction informed by observation.
 
 ### Layer 3: Act on what you know
 
@@ -97,10 +97,10 @@ Git workflows, code generation, policy enforcement.
 | Tool | What it does | Install |
 |------|-------------|---------|
 | [jetsam](https://github.com/teague/jetsam) | Git workflow accelerator. Save, sync, ship. Preview plans before execution. | `pip install jetsam-mcp` |
-| [lackpy](https://github.com/teague/lackpy) | Micro-inferencer that translates natural language intent into pluckit chains. Qwen 2.5 Coder 3B, local, $0. | `pip install lackpy` |
+| [lackpy](https://github.com/teaguesterling/lackpy) | Micro-inferencer that translates natural language intent into sandboxed tool-composition programs. Local 1.5B model, AST-validated, traced execution. Has a PolicyLayer — ordered chain of policy sources (kit baseline → kibitzer coaching → umwelt restrictions) that resolves allowed tools, constraints, and prompt hints before generation. | `pip install lackpy` |
 | [umwelt](https://github.com/teaguesterling/umwelt) | CSS-syntax policy engine with vocabulary-agnostic core and built-in SQLite compiler. Selectors + cascade resolve policy per-entity. Each consumer (kibitzer, lackpy, sandbox builders) queries resolved policy through the PolicyEngine API — never touches the parser or compiler directly. Generic context qualifiers let any cross-taxon entity (mode, principal, world) gate a rule. | `pip install umwelt` |
 
-**How they compose:** jetsam handles the git ceremony. lackpy generates pluckit chains from intent, using a fine-tuned local model trained on the pluckit API spec. umwelt declares what's allowed and compiles it to SQLite — the PolicyEngine is the consumer-facing API. Each consumer queries its own slice: kibitzer asks "is tool X allowed?", a sandbox builder asks "what mounts are writable?", lackpy asks "what operations are legal?" Same compiled database, different consumers reading different views. One policy, many enforcement points.
+**How they compose:** jetsam handles the git ceremony. lackpy generates sandboxed programs from intent — but before generation, its PolicyLayer resolves what's allowed: the kit provides the baseline tool set (S1), kibitzer adds coaching hints and correction signals (S3), and umwelt provides world-model restrictions (S5). The chain is ordered by priority; each source narrows what the previous allowed. umwelt declares what's allowed and compiles it to SQLite — the PolicyEngine is the consumer-facing API. Each consumer queries its own slice: kibitzer asks "is tool X allowed? what are this mode's writable paths?", lackpy asks "which tools can this program use?", a sandbox builder asks "what mounts are writable?" Same compiled database, different consumers reading different views. One policy, many enforcement points.
 
 ### Layer 4: Human-side palliatives
 
@@ -150,28 +150,44 @@ blq captures test failure
 
 umwelt provides the policy layer throughout:
     → kibitzer checks: is this tool allowed? (engine.check)
+    → kibitzer reads mode config: writable paths, strategy (engine.resolve)
     → sandbox builder reads: what mounts are writable? (engine.resolve_all)
     → lackpy reads: what operations are legal? (engine.resolve_all)
     → trace shows why: engine.trace produces full audit trail
 ```
 
-### The PolicyEngine pattern
+### The three integration patterns
 
-umwelt declares, consumers enforce. The integration point is always the same:
+**1. PolicyEngine (pull model):** umwelt declares, consumers enforce. The consumer queries resolved policy on demand:
 
 ```python
 from umwelt.policy import PolicyEngine
 
 engine = PolicyEngine.from_db("compiled.db")
-
-# Consumer asks what the policy says
 engine.resolve(type="tool", id="Bash", property="allow")
-
-# Consumer acts on the answer
-# umwelt never calls the tool — the consumer does
 ```
 
-This is a pull model: consumers query policy on demand. They don't register callbacks or subscribe to events. The compiled database is the shared artifact. Multiple consumers can read the same database simultaneously, each querying its own slice.
+kibitzer uses this pattern — its `PolicyConsumer` wraps a PolicyEngine and provides mode-specific queries (`get_mode_policy`, `get_tool_policy`, `list_modes`). It also registers its own vocabulary (writable paths, coaching frequency, max-turns) so policy authors configure kibitzer through the same `.umw` stylesheets.
+
+**2. PolicyLayer (chain model):** lackpy's ordered resolution chain composes multiple policy sources:
+
+```python
+from lackpy.policy import PolicyLayer
+from lackpy.policy.sources import KitPolicySource, KibitzerPolicySource, UmweltPolicySource
+
+layer = PolicyLayer()
+layer.add_source(KitPolicySource(kit))           # S1: what tools exist
+layer.add_source(KibitzerPolicySource(session))   # S3: coaching + hints
+layer.add_source(UmweltPolicySource(engine))      # S5: world-model restrictions
+result = layer.resolve(context)
+# → allowed_tools, denied_tools, tool_constraints, prompt_hints
+```
+
+Each source can narrow what the previous allowed; none can widen. The kit provides the ground truth (what tools are physically available), kibitzer adds coaching (never modifies tool access), and umwelt provides authoritative restrictions from the world model.
+
+**3. Shared taxonomy (vocabulary model):** kibitzer and lackpy share a failure mode taxonomy — 7 categories of generation failure (implement_not_orchestrate, stdlib_leak, path_prefix, jupyter_confusion, syntax_artifact, key_hallucination, wrong_output). Each category maps to a specific prompt intervention. When lackpy's generated program fails validation, kibitzer classifies the failure mode and returns correction hints that feed back into the next generation attempt.
+
+Multiple consumers can read the same compiled database simultaneously, each querying its own slice. The compiled database is the shared artifact — not an API, not an event bus, just a SQLite file.
 
 ---
 
@@ -213,9 +229,9 @@ The suite has a theoretical frame: Stafford Beer's [Viable System Model](https:/
 
 | VSM | Function | Retritis tool |
 |-----|----------|--------------|
-| **S1** Operations | The tools that do the work | jetsam (git), blq (build), pluckit (code mutation), lackpy (generation) |
-| **S2** Coordination | Routes messages, enforces permissions | The harness (Claude Code) + plugin hooks + umwelt (compiled policy) |
-| **S3** Control | Watches trajectory, allocates resources, adjusts configuration | kibitzer (in-session), agent-riggs (cross-session) |
+| **S1** Operations | The tools that do the work | jetsam (git), blq (build), pluckit (code mutation), lackpy (generation + PolicyLayer) |
+| **S2** Coordination | Routes messages, enforces permissions | The harness (Claude Code) + plugin hooks + umwelt (compiled policy via PolicyEngine) |
+| **S3** Control | Watches trajectory, allocates resources, adjusts configuration | kibitzer (in-session, umwelt plugin for mode policy), agent-riggs (cross-session) |
 | **S3*** Audit | Observes operations directly | blq (build audit), fledgling (conversation audit), ratchet-detect |
 | **S4** Intelligence | Environmental scanning, adaptation | The LLM itself |
 | **S5** Identity | What the system is for, whose values it serves | The human. umwelt encodes their policy |
@@ -319,6 +335,7 @@ The bad news: you will name things like "retritis" and think it's funny.
 
 - [judgementalmonad.com](https://judgementalmonad.com) — The blog series behind the suite
 - [The Policy Layer](https://judgementalmonad.com/blog/policy/) — Why agent security needs a policy language, how CSS selectors + cascade resolve it, the seven authorization axes, and why umwelt uses the syntax it does (7 posts)
+- [The Lackey Papers](https://judgementalmonad.com/blog/tools/lackey/) — The Ma framework at micro scale: tool-call composition, restricted code generation, and why the smallest model won (6 posts)
 - [The Tools That Built Themselves](https://judgementalmonad.com/blog/tools/the-tools-that-built-themselves) — How and why these tools exist
 - [Ratchet Fuel](https://judgementalmonad.com/blog/fuel/index) — The agent-side ratchet mechanism
 - [The Ma of Multi-Agent Systems](https://judgementalmonad.com/blog/ma/index) — Beer's VSM applied to agent architecture
