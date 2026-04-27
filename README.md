@@ -74,9 +74,9 @@ Before you can fix, refactor, or understand anything, you need reliable facts ab
 | [sitting_duck](https://github.com/teaguesterling/sitting_duck) | CSS selectors over tree-sitter ASTs in DuckDB. 27 languages. The query engine underneath everything else. | `INSTALL sitting_duck FROM community;` |
 | [duck_tails](https://github.com/teaguesterling/duck_tails) | Git history as queryable DuckDB tables. Per-file, per-commit, per-function. | `INSTALL duck_tails FROM community;` |
 | [duck_hunt](https://github.com/teaguesterling/duck_hunt) | Log parsing for 90+ development tools and CI/CD systems. Structured extraction from build output. | `INSTALL duck_hunt FROM community;` |
-| [fledgling](https://github.com/teaguesterling/fledgling) | SQL macros for definitions, callers, cross-file resolution, structural similarity. | `pip install fledgling` |
+| [fledgling](https://github.com/teaguesterling/fledgling) | SQL macros for definitions, callers, cross-file resolution, structural similarity. | `pip install fledgling-mcp` |
 | [squackit](https://github.com/teaguesterling/squackit) | MCP server + CLI wrapping fledgling with smart defaults, session caching, compound workflows, and token-aware output. The surface most users interact with. | `pip install squackit` |
-| [pluckit](https://github.com/teaguesterling/pluckit) | jQuery for source code. Fluent chains: select → filter → mutate → test → save. | `pip install pluckit` |
+| [pluckit](https://github.com/teaguesterling/pluckit) | jQuery for source code. Fluent chains: select → filter → mutate → test → save. | `pip install ast-pluckit` |
 
 **How they compose:** sitting_duck parses code into ASTs. duck_tails adds git history. duck_hunt parses build logs (and is a dependency of blq). fledgling adds cross-file query macros on top of the DuckDB extensions. squackit wraps fledgling for agents and humans. pluckit adds a fluent mutation layer. All share the DuckDB substrate — a single query can join AST structure with git history with build output.
 
