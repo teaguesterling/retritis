@@ -1,0 +1,247 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 680" font-family="'IBM Plex Mono', 'Fira Code', 'Consolas', monospace" font-size="12">
+  <defs>
+    <linearGradient id="duckdb" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#fef3c7"/>
+      <stop offset="100%" stop-color="#fde68a"/>
+    </linearGradient>
+    <linearGradient id="sqlite" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#dbeafe"/>
+      <stop offset="100%" stop-color="#bfdbfe"/>
+    </linearGradient>
+    <linearGradient id="layer1" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#f0fdf4"/>
+      <stop offset="100%" stop-color="#dcfce7"/>
+    </linearGradient>
+    <linearGradient id="layer2" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#fefce8"/>
+      <stop offset="100%" stop-color="#fef9c3"/>
+    </linearGradient>
+    <linearGradient id="layer3" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#eff6ff"/>
+      <stop offset="100%" stop-color="#dbeafe"/>
+    </linearGradient>
+    <linearGradient id="layer4" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#fdf4ff"/>
+      <stop offset="100%" stop-color="#fae8ff"/>
+    </linearGradient>
+    <filter id="shadow" x="-2%" y="-2%" width="104%" height="104%">
+      <feDropShadow dx="1" dy="1" stdDeviation="2" flood-opacity="0.1"/>
+    </filter>
+  </defs>
+
+  <!-- Background -->
+  <rect width="960" height="680" fill="#fafaf9" rx="8"/>
+
+  <!-- Title -->
+  <text x="480" y="32" text-anchor="middle" font-size="18" font-weight="bold" fill="#1c1917">retritis</text>
+  <text x="480" y="50" text-anchor="middle" font-size="11" fill="#78716c">palliative treatments for agent-assisted development</text>
+
+  <!-- ═══ LAYER 1: Query ═══ -->
+  <rect x="20" y="66" width="560" height="105" rx="6" fill="url(#layer1)" stroke="#86efac" stroke-width="1" filter="url(#shadow)"/>
+  <text x="32" y="82" font-size="10" font-weight="bold" fill="#166534" letter-spacing="1">LAYER 1 · QUERY</text>
+
+  <rect x="32" y="92" width="100" height="36" rx="4" fill="white" stroke="#4ade80" stroke-width="1"/>
+  <text x="82" y="108" text-anchor="middle" font-weight="bold" fill="#15803d" font-size="11">sitting_duck</text>
+  <text x="82" y="121" text-anchor="middle" fill="#6b7280" font-size="9">AST → DuckDB</text>
+
+  <rect x="140" y="92" width="88" height="36" rx="4" fill="white" stroke="#4ade80" stroke-width="1"/>
+  <text x="184" y="108" text-anchor="middle" font-weight="bold" fill="#15803d" font-size="11">duck_tails</text>
+  <text x="184" y="121" text-anchor="middle" fill="#6b7280" font-size="9">git history</text>
+
+  <rect x="236" y="92" width="82" height="36" rx="4" fill="white" stroke="#4ade80" stroke-width="1"/>
+  <text x="277" y="108" text-anchor="middle" font-weight="bold" fill="#15803d" font-size="11">fledgling</text>
+  <text x="277" y="121" text-anchor="middle" fill="#6b7280" font-size="9">SQL macros</text>
+
+  <rect x="326" y="92" width="76" height="36" rx="4" fill="white" stroke="#4ade80" stroke-width="1"/>
+  <text x="364" y="108" text-anchor="middle" font-weight="bold" fill="#15803d" font-size="11">squackit</text>
+  <text x="364" y="121" text-anchor="middle" fill="#6b7280" font-size="9">MCP + CLI</text>
+
+  <rect x="410" y="92" width="72" height="36" rx="4" fill="white" stroke="#4ade80" stroke-width="1"/>
+  <text x="446" y="108" text-anchor="middle" font-weight="bold" fill="#15803d" font-size="11">pluckit</text>
+  <text x="446" y="121" text-anchor="middle" fill="#6b7280" font-size="9">fluent chains</text>
+
+  <!-- Layer 1 composition arrow -->
+  <text x="32" y="157" fill="#6b7280" font-size="9">sitting_duck → fledgling → squackit → pluckit</text>
+  <text x="32" y="167" fill="#6b7280" font-size="9">each wraps the previous · duck_tails adds time</text>
+
+  <!-- ═══ LAYER 2: Observe ═══ -->
+  <rect x="20" y="180" width="560" height="105" rx="6" fill="url(#layer2)" stroke="#fde047" stroke-width="1" filter="url(#shadow)"/>
+  <text x="32" y="196" font-size="10" font-weight="bold" fill="#854d0e" letter-spacing="1">LAYER 2 · OBSERVE</text>
+
+  <rect x="32" y="206" width="56" height="36" rx="4" fill="white" stroke="#facc15" stroke-width="1"/>
+  <text x="60" y="222" text-anchor="middle" font-weight="bold" fill="#a16207" font-size="11">blq</text>
+  <text x="60" y="235" text-anchor="middle" fill="#6b7280" font-size="9">builds</text>
+
+  <rect x="96" y="206" width="80" height="36" rx="4" fill="white" stroke="#facc15" stroke-width="1"/>
+  <text x="136" y="222" text-anchor="middle" font-weight="bold" fill="#a16207" font-size="11">kibitzer</text>
+  <text x="136" y="235" text-anchor="middle" fill="#6b7280" font-size="9">tool calls</text>
+
+  <rect x="184" y="206" width="100" height="36" rx="4" fill="white" stroke="#facc15" stroke-width="1"/>
+  <text x="234" y="222" text-anchor="middle" font-weight="bold" fill="#a16207" font-size="11">agent-riggs</text>
+  <text x="234" y="235" text-anchor="middle" fill="#6b7280" font-size="9">traces</text>
+
+  <rect x="292" y="206" width="108" height="36" rx="4" fill="white" stroke="#facc15" stroke-width="1"/>
+  <text x="346" y="222" text-anchor="middle" font-weight="bold" fill="#a16207" font-size="11">ratchet-detect</text>
+  <text x="346" y="235" text-anchor="middle" fill="#6b7280" font-size="9">candidates</text>
+
+  <text x="32" y="270" fill="#6b7280" font-size="9">blq errors → agent-riggs traces → ratchet candidates → kibitzer suggestions</text>
+  <text x="32" y="280" fill="#6b7280" font-size="9">kibitzer shares failure taxonomy with lackpy for correction hints</text>
+
+  <!-- ═══ LAYER 3: Act ═══ -->
+  <rect x="20" y="294" width="560" height="105" rx="6" fill="url(#layer3)" stroke="#93c5fd" stroke-width="1" filter="url(#shadow)"/>
+  <text x="32" y="310" font-size="10" font-weight="bold" fill="#1e40af" letter-spacing="1">LAYER 3 · ACT</text>
+
+  <rect x="32" y="320" width="72" height="36" rx="4" fill="white" stroke="#60a5fa" stroke-width="1"/>
+  <text x="68" y="336" text-anchor="middle" font-weight="bold" fill="#1d4ed8" font-size="11">jetsam</text>
+  <text x="68" y="349" text-anchor="middle" fill="#6b7280" font-size="9">git flows</text>
+
+  <rect x="112" y="320" width="72" height="36" rx="4" fill="white" stroke="#60a5fa" stroke-width="1"/>
+  <text x="148" y="336" text-anchor="middle" font-weight="bold" fill="#1d4ed8" font-size="11">lackpy</text>
+  <text x="148" y="349" text-anchor="middle" fill="#6b7280" font-size="9">generation</text>
+
+  <rect x="192" y="320" width="76" height="36" rx="4" fill="white" stroke="#60a5fa" stroke-width="1"/>
+  <text x="230" y="336" text-anchor="middle" font-weight="bold" fill="#1d4ed8" font-size="11">umwelt</text>
+  <text x="230" y="349" text-anchor="middle" fill="#6b7280" font-size="9">policy</text>
+
+  <text x="32" y="384" fill="#6b7280" font-size="9">lackpy PolicyLayer: kit (S1) → kibitzer hints (S3) → umwelt restrictions (S5)</text>
+  <text x="32" y="394" fill="#6b7280" font-size="9">umwelt declares · consumers enforce · one policy, many enforcement points</text>
+
+  <!-- ═══ LAYER 4: Human ═══ -->
+  <rect x="20" y="408" width="560" height="68" rx="6" fill="url(#layer4)" stroke="#d8b4fe" stroke-width="1" filter="url(#shadow)"/>
+  <text x="32" y="424" font-size="10" font-weight="bold" fill="#7e22ce" letter-spacing="1">LAYER 4 · HUMAN</text>
+
+  <rect x="32" y="434" width="78" height="30" rx="4" fill="white" stroke="#c084fc" stroke-width="1"/>
+  <text x="71" y="453" text-anchor="middle" font-weight="bold" fill="#7c3aed" font-size="11">tmux-use</text>
+
+  <rect x="118" y="434" width="64" height="30" rx="4" fill="white" stroke="#c084fc" stroke-width="1"/>
+  <text x="150" y="453" text-anchor="middle" font-weight="bold" fill="#7c3aed" font-size="11">git-wt</text>
+
+  <rect x="190" y="434" width="48" height="30" rx="4" fill="white" stroke="#c084fc" stroke-width="1"/>
+  <text x="214" y="453" text-anchor="middle" font-weight="bold" fill="#7c3aed" font-size="11">ffs</text>
+
+  <rect x="246" y="434" width="72" height="30" rx="4" fill="white" stroke="#c084fc" stroke-width="1"/>
+  <text x="282" y="453" text-anchor="middle" font-weight="bold" fill="#7c3aed" font-size="11">init-dev</text>
+
+  <!-- ═══ SUBSTRATES ═══ -->
+
+  <!-- DuckDB substrate -->
+  <rect x="600" y="66" width="340" height="200" rx="6" fill="url(#duckdb)" stroke="#f59e0b" stroke-width="1.5" filter="url(#shadow)"/>
+  <text x="770" y="86" text-anchor="middle" font-size="13" font-weight="bold" fill="#92400e">DuckDB substrate</text>
+  <text x="770" y="100" text-anchor="middle" font-size="10" fill="#92400e">facts about code and sessions</text>
+
+  <rect x="616" y="112" width="308" height="24" rx="3" fill="white" fill-opacity="0.7" stroke="#d97706" stroke-width="0.5"/>
+  <text x="770" y="128" text-anchor="middle" fill="#78716c" font-size="10">ASTs · git history · build logs · traces</text>
+
+  <rect x="616" y="144" width="308" height="24" rx="3" fill="white" fill-opacity="0.7" stroke="#d97706" stroke-width="0.5"/>
+  <text x="770" y="160" text-anchor="middle" fill="#78716c" font-size="10">conversation logs · session analytics</text>
+
+  <rect x="616" y="176" width="308" height="24" rx="3" fill="white" fill-opacity="0.7" stroke="#d97706" stroke-width="0.5"/>
+  <text x="770" y="192" text-anchor="middle" fill="#78716c" font-size="10">fingerprints · patterns · templates</text>
+
+  <text x="616" y="224" fill="#92400e" font-size="9">SELECT * FROM ast JOIN git_blame ON ...</text>
+  <text x="616" y="236" fill="#92400e" font-size="9">JOIN across everything in one query</text>
+  <text x="616" y="252" fill="#92400e" font-size="9" font-weight="bold">Producers:</text>
+  <text x="714" y="252" fill="#78716c" font-size="9">sitting_duck  duck_tails  blq  agent-riggs</text>
+
+  <!-- SQLite / PolicyEngine substrate -->
+  <rect x="600" y="280" width="340" height="196" rx="6" fill="url(#sqlite)" stroke="#3b82f6" stroke-width="1.5" filter="url(#shadow)"/>
+  <text x="770" y="300" text-anchor="middle" font-size="13" font-weight="bold" fill="#1e3a8a">PolicyEngine substrate</text>
+  <text x="770" y="314" text-anchor="middle" font-size="10" fill="#1e3a8a">resolved policy (compiled SQLite)</text>
+
+  <!-- Source files -->
+  <rect x="616" y="326" width="120" height="42" rx="3" fill="white" fill-opacity="0.8" stroke="#3b82f6" stroke-width="0.5"/>
+  <text x="676" y="343" text-anchor="middle" fill="#1e40af" font-size="10" font-weight="bold">.world.yml</text>
+  <text x="676" y="358" text-anchor="middle" fill="#6b7280" font-size="9">entities</text>
+
+  <rect x="616" y="376" width="120" height="42" rx="3" fill="white" fill-opacity="0.8" stroke="#3b82f6" stroke-width="0.5"/>
+  <text x="676" y="393" text-anchor="middle" fill="#1e40af" font-size="10" font-weight="bold">policy.umw</text>
+  <text x="676" y="408" text-anchor="middle" fill="#6b7280" font-size="9">CSS rules</text>
+
+  <!-- Compile arrow -->
+  <path d="M 736 360 L 760 360" stroke="#3b82f6" stroke-width="1.5" fill="none" marker-end="url(#arrowBlue)"/>
+  <text x="748" y="352" text-anchor="middle" fill="#3b82f6" font-size="8">compile</text>
+
+  <!-- PolicyEngine box -->
+  <rect x="762" y="330" width="164" height="60" rx="4" fill="white" stroke="#3b82f6" stroke-width="1.5"/>
+  <text x="844" y="350" text-anchor="middle" font-weight="bold" fill="#1e40af" font-size="11">PolicyEngine</text>
+  <text x="844" y="363" text-anchor="middle" fill="#6b7280" font-size="9">resolve() · trace()</text>
+  <text x="844" y="375" text-anchor="middle" fill="#6b7280" font-size="9">check() · require()</text>
+
+  <!-- Consumer boxes -->
+  <rect x="762" y="404" width="50" height="28" rx="3" fill="#eff6ff" stroke="#60a5fa" stroke-width="1"/>
+  <text x="787" y="422" text-anchor="middle" fill="#1d4ed8" font-size="9" font-weight="bold">kib</text>
+
+  <rect x="818" y="404" width="50" height="28" rx="3" fill="#eff6ff" stroke="#60a5fa" stroke-width="1"/>
+  <text x="843" y="422" text-anchor="middle" fill="#1d4ed8" font-size="9" font-weight="bold">lack</text>
+
+  <rect x="874" y="404" width="50" height="28" rx="3" fill="#eff6ff" stroke="#60a5fa" stroke-width="1"/>
+  <text x="899" y="422" text-anchor="middle" fill="#1d4ed8" font-size="9" font-weight="bold">sand</text>
+
+  <!-- Consumer lines -->
+  <line x1="787" y1="390" x2="787" y2="404" stroke="#60a5fa" stroke-width="1"/>
+  <line x1="843" y1="390" x2="843" y2="404" stroke="#60a5fa" stroke-width="1"/>
+  <line x1="899" y1="390" x2="899" y2="404" stroke="#60a5fa" stroke-width="1"/>
+
+  <text x="762" y="452" fill="#1e3a8a" font-size="9" font-weight="bold">Consumers:</text>
+  <text x="832" y="452" fill="#78716c" font-size="9">same DB, different queries</text>
+  <text x="762" y="464" fill="#78716c" font-size="9">kibitzer: mode config · lackpy: tool access</text>
+
+  <!-- ═══ RATCHET LOOP ═══ -->
+  <rect x="600" y="494" width="340" height="80" rx="6" fill="#fef2f2" stroke="#fca5a5" stroke-width="1" filter="url(#shadow)"/>
+  <text x="770" y="514" text-anchor="middle" font-size="11" font-weight="bold" fill="#991b1b">the ratchet</text>
+
+  <text x="622" y="536" fill="#b91c1c" font-size="10">friction → observation → crystallization</text>
+  <text x="622" y="552" fill="#b91c1c" font-size="10">  → tool → less friction → repeat</text>
+  <text x="622" y="568" fill="#78716c" font-size="9">it only turns one direction</text>
+
+  <!-- ═══ CONNECTION ARROWS (layers → substrates) ═══ -->
+
+  <!-- Layer 1 → DuckDB -->
+  <path d="M 580 120 C 590 120, 596 120, 600 120" stroke="#f59e0b" stroke-width="1.5" stroke-dasharray="4,3" fill="none"/>
+
+  <!-- Layer 2 → DuckDB -->
+  <path d="M 580 230 C 590 230, 596 200, 600 200" stroke="#f59e0b" stroke-width="1.5" stroke-dasharray="4,3" fill="none"/>
+
+  <!-- Layer 3 → SQLite -->
+  <path d="M 580 340 C 590 340, 596 360, 600 360" stroke="#3b82f6" stroke-width="1.5" stroke-dasharray="4,3" fill="none"/>
+
+  <!-- kibitzer → both substrates -->
+  <text x="510" y="222" fill="#a16207" font-size="8">DuckDB ↗</text>
+  <text x="510" y="232" fill="#1e40af" font-size="8">policy ↘</text>
+
+  <!-- Arrowhead definitions -->
+  <defs>
+    <marker id="arrowBlue" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto">
+      <polygon points="0 0, 8 3, 0 6" fill="#3b82f6"/>
+    </marker>
+    <marker id="arrowAmber" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto">
+      <polygon points="0 0, 8 3, 0 6" fill="#f59e0b"/>
+    </marker>
+  </defs>
+
+  <!-- ═══ VSM LABELS ═══ -->
+  <rect x="20" y="494" width="560" height="80" rx="6" fill="#f8fafc" stroke="#cbd5e1" stroke-width="1" filter="url(#shadow)"/>
+  <text x="32" y="514" font-size="10" font-weight="bold" fill="#475569" letter-spacing="1">VSM MAPPING</text>
+  <text x="32" y="534" fill="#64748b" font-size="10">
+    <tspan font-weight="bold" fill="#475569">S1</tspan> Operations: jetsam, blq, pluckit, lackpy
+  </text>
+  <text x="32" y="548" fill="#64748b" font-size="10">
+    <tspan font-weight="bold" fill="#475569">S2</tspan> Coordination: harness + umwelt    <tspan font-weight="bold" fill="#475569">S3</tspan> Control: kibitzer, agent-riggs
+  </text>
+  <text x="32" y="562" fill="#64748b" font-size="10">
+    <tspan font-weight="bold" fill="#475569">S4</tspan> Intelligence: the LLM    <tspan font-weight="bold" fill="#475569">S5</tspan> Identity: the human (umwelt encodes their policy)
+  </text>
+
+  <!-- ═══ BLOG LINKS ═══ -->
+  <rect x="20" y="590" width="920" height="76" rx="6" fill="#f5f5f4" stroke="#d6d3d1" stroke-width="1"/>
+  <text x="32" y="610" font-size="10" font-weight="bold" fill="#78716c" letter-spacing="1">FURTHER READING</text>
+  <text x="32" y="630" fill="#3b82f6" font-size="10">The Policy Layer</text>
+  <text x="138" y="630" fill="#78716c" font-size="10">· why agent security needs a policy language (7 posts)</text>
+  <text x="32" y="646" fill="#3b82f6" font-size="10">The Lackey Papers</text>
+  <text x="145" y="646" fill="#78716c" font-size="10">· restricted generation + the smallest model won (6 posts)</text>
+  <text x="530" y="630" fill="#3b82f6" font-size="10">Ratchet Fuel</text>
+  <text x="605" y="630" fill="#78716c" font-size="10">· the agent-side ratchet</text>
+  <text x="530" y="646" fill="#3b82f6" font-size="10">The Ma of Multi-Agent Systems</text>
+  <text x="745" y="646" fill="#78716c" font-size="10">· Beer's VSM</text>
+  <text x="32" y="660" fill="#3b82f6" font-size="10">judgementalmonad.com</text>
+</svg>
