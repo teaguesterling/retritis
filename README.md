@@ -121,6 +121,24 @@ The tools above compose through two shared substrates and one shared grammar. Un
 
 ### Two substrates
 
+```
+  DuckDB (facts)                          SQLite (policy)
+  ════════════════                        ═══════════════════
+                                          ┌─────────────┐
+  sitting_duck ──┐                        │ .world.yml  │──┐
+  duck_tails  ───┤                        │ policy.umw  │  │
+  blq  ──────────┼──→  shared tables      └─────────────┘  │ umwelt
+  fledgling  ────┤     (ASTs, git,        ┌─────────────┐  │ compile
+  agent-riggs ───┘      builds, traces)   │ PolicyEngine│←─┘
+                                          │  (compiled  │
+  JOIN across all                         │   .db file) │
+  in one query                            └──────┬──────┘
+                                                 │ resolve()
+                                          ┌──────┼──────┐
+                                          │      │      │
+                                       kibitzer lackpy sandbox
+```
+
 **DuckDB** (facts about code and sessions): sitting_duck parses ASTs. duck_tails imports git history. fledgling adds cross-file query macros. blq captures build events. agent-riggs records traces. All land in the same DuckDB instance — a single query can join AST structure with git blame with test failures.
 
 **SQLite** (resolved policy): umwelt compiles a world file + stylesheet into a SQLite database. The compilation pipeline parses CSS selectors, evaluates them against declared entities, resolves the cascade (specificity + document order), and writes the result to `resolved_properties`. Every consumer reads from this database through the PolicyEngine API.
@@ -137,23 +155,41 @@ Cross-taxon selectors are **context qualifiers** — they gate a rule on a condi
 
 ### Data flows
 
-```
-blq captures test failure
-    → error has file path, line number, function name
-    → squackit resolves the function's definition + callers
-    → pluckit selects the code and applies a fix chain
-    → blq re-runs tests to verify
-    → jetsam commits the fix
-    → agent-riggs records the trace (error → query → fix → verify → commit)
-    → ratchet-detect finds the pattern is recurring
-    → kibitzer suggests the fix chain next time the pattern appears
+The DuckDB pipeline: error → understanding → fix → commit → learning.
 
-umwelt provides the policy layer throughout:
-    → kibitzer checks: is this tool allowed? (engine.check)
-    → kibitzer reads mode config: writable paths, strategy (engine.resolve)
-    → sandbox builder reads: what mounts are writable? (engine.resolve_all)
-    → lackpy reads: what operations are legal? (engine.resolve_all)
-    → trace shows why: engine.trace produces full audit trail
+```
+  blq              squackit          pluckit           blq            jetsam
+  (capture)        (understand)      (fix)             (verify)       (commit)
+     │                 │                │                 │              │
+     ▼                 ▼                ▼                 ▼              ▼
+  test fails ──→ resolve func ──→ apply chain ──→ re-run tests ──→ commit fix
+                 + callers                                              │
+                                                                        ▼
+                                                                   agent-riggs
+                                                                   (record trace)
+                                                                        │
+                                                              ┌─────────┴──────────┐
+                                                              ▼                    ▼
+                                                        ratchet-detect        kibitzer
+                                                        (find pattern)    (suggest next time)
+```
+
+The policy layer: umwelt provides authorization context throughout.
+
+```
+  ┌──────────────────────────────────────────────────────┐
+  │              umwelt PolicyEngine                      │
+  │  .world.yml + policy.umw → compiled SQLite database  │
+  └────────┬──────────┬──────────┬──────────┬────────────┘
+           │          │          │          │
+       engine.    engine.    engine.    engine.
+       check()   resolve()  resolve    trace()
+           │          │     _all()        │
+           ▼          ▼          │        ▼
+       kibitzer   kibitzer      ▼     audit trail
+       "is Bash   "mode has   lackpy   "rule 2
+        allowed?"  writable:  "which    won at
+                   src/"      tools?"   spec 0,1,1"
 ```
 
 ### The three integration patterns
@@ -171,21 +207,55 @@ kibitzer uses this pattern — its `PolicyConsumer` wraps a PolicyEngine and pro
 
 **2. PolicyLayer (chain model):** lackpy's ordered resolution chain composes multiple policy sources:
 
-```python
-from lackpy.policy import PolicyLayer
-from lackpy.policy.sources import KitPolicySource, KibitzerPolicySource, UmweltPolicySource
-
-layer = PolicyLayer()
-layer.add_source(KitPolicySource(kit))           # S1: what tools exist
-layer.add_source(KibitzerPolicySource(session))   # S3: coaching + hints
-layer.add_source(UmweltPolicySource(engine))      # S5: world-model restrictions
-result = layer.resolve(context)
-# → allowed_tools, denied_tools, tool_constraints, prompt_hints
+```
+  ┌───────────┐     ┌────────────────┐     ┌─────────────────┐
+  │    Kit    │     │   Kibitzer     │     │    Umwelt       │
+  │   (S1)    │────▶│    (S3)        │────▶│    (S5)         │────▶ PolicyResult
+  │           │     │                │     │                 │
+  │ tools     │     │ + hints        │     │ - denied tools  │     allowed_tools
+  │ physically│     │ + doc context  │     │ - constraints   │     prompt_hints
+  │ available │     │ + corrections  │     │   (max-level,   │     tool_constraints
+  │           │     │ (never narrows │     │    patterns)    │
+  │           │     │  tool access)  │     │                 │
+  └───────────┘     └────────────────┘     └─────────────────┘
+  priority: 10       priority: 50           priority: 100
+                     can only ADD hints     can only NARROW access
 ```
 
 Each source can narrow what the previous allowed; none can widen. The kit provides the ground truth (what tools are physically available), kibitzer adds coaching (never modifies tool access), and umwelt provides authoritative restrictions from the world model.
 
-**3. Shared taxonomy (vocabulary model):** kibitzer and lackpy share a failure mode taxonomy — 7 categories of generation failure (implement_not_orchestrate, stdlib_leak, path_prefix, jupyter_confusion, syntax_artifact, key_hallucination, wrong_output). Each category maps to a specific prompt intervention. When lackpy's generated program fails validation, kibitzer classifies the failure mode and returns correction hints that feed back into the next generation attempt.
+**3. Shared taxonomy (vocabulary model):** kibitzer and lackpy share a failure mode taxonomy. Each failure category maps to a specific prompt intervention:
+
+```
+  lackpy generates program
+         │
+         ▼
+  validation fails ──→ classify failure mode
+         │                     │
+         │              ┌──────┴───────────────────────────┐
+         │              │  7 shared failure categories:     │
+         │              │                                   │
+         │              │  implement_not_orchestrate        │
+         │              │    → "ORCHESTRATE, DO NOT         │
+         │              │       IMPLEMENT"                  │
+         │              │  stdlib_leak                      │
+         │              │    → "Do NOT use open(). Use      │
+         │              │       read_file()"                │
+         │              │  path_prefix                      │
+         │              │    → "All paths relative to       │
+         │              │       workspace root"             │
+         │              │  key_hallucination                │
+         │              │    → document return schema       │
+         │              │       in namespace_desc           │
+         │              │  ...                              │
+         │              └──────┬───────────────────────────┘
+         │                     │
+         ▼                     ▼
+  next generation ◀──── correction hints
+  attempt                (prompt_hints + doc_context)
+```
+
+When lackpy's generated program fails validation, kibitzer classifies the failure mode and returns correction hints that feed back into the next generation attempt.
 
 Multiple consumers can read the same compiled database simultaneously, each querying its own slice. The compiled database is the shared artifact — not an API, not an event bus, just a SQLite file.
 
