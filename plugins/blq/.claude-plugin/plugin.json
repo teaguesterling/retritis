@@ -6,8 +6,8 @@
     "name": "Teague Sterling",
     "email": "teaguesterling@users.noreply.github.com"
   },
-  "homepage": "https://github.com/teaguesterling/blq",
-  "repository": "https://github.com/teaguesterling/blq",
+  "homepage": "https://github.com/teaguesterling/blq-cli",
+  "repository": "https://github.com/teaguesterling/blq-cli",
   "license": "MIT",
   "keywords": ["build", "test", "logs", "mcp", "blq"]
 }

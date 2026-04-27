@@ -41,11 +41,21 @@ plugins/<name>/
 
 | Plugin | Package | Repo | MCP command |
 |--------|---------|------|-------------|
-| blq | `pip install blq-cli` | teague/lq | `blq mcp serve` |
-| jetsam | `pip install jetsam-mcp` | teague/jetsam | `jetsam serve` |
-| fledgling | `pip install fledgling` | teague/source-sextant | `fledgling mcp serve` |
-| squackit | `pip install squackit` | teague/squackit | `squackit mcp serve` |
-| kibitzer | `pip install kibitzer` | teague/kibitzer | `kibitzer mcp serve` |
+| blq | `pip install blq-cli` | teaguesterling/blq-cli | `blq mcp serve` |
+| jetsam | `pip install jetsam-mcp` | teaguesterling/jetsam | `jetsam serve` |
+| fledgling | `pip install fledgling` | teaguesterling/fledgling | `fledgling mcp serve` |
+| squackit | `pip install squackit` | teaguesterling/squackit | `squackit mcp serve` |
+| kibitzer | `pip install kibitzer` | teaguesterling/kibitzer | `kibitzer mcp serve` |
+
+### DuckDB extensions (prerequisites)
+
+These are dependencies of the Python tools above, not plugins themselves:
+
+```sql
+INSTALL sitting_duck FROM community;
+INSTALL duck_tails FROM community;
+INSTALL duck_hunt FROM community;
+```
 
 ### Testing plugins
 

@@ -302,16 +302,16 @@ The suite has a theoretical frame: Stafford Beer's [Viable System Model](https:/
 
 | VSM | Function | Retritis tool |
 |-----|----------|--------------|
-| **S1** Operations | The tools that do the work | jetsam (git), blq (build), pluckit (code mutation), lackpy (generation + PolicyLayer) |
-| **S2** Coordination | Routes messages, enforces permissions | The harness (Claude Code) + plugin hooks + umwelt (compiled policy via PolicyEngine) |
-| **S3** Control | Watches trajectory, allocates resources, adjusts configuration | kibitzer (in-session, umwelt plugin for mode policy), agent-riggs (cross-session) |
-| **S3*** Audit | Observes operations directly | blq (build audit), fledgling (conversation audit), ratchet-detect |
-| **S4** Intelligence | Environmental scanning, adaptation | The LLM itself |
-| **S5** Identity | What the system is for, whose values it serves | The human. umwelt encodes their policy |
+| **S1** Operations | The tools that do the work | jetsam (git), blq (build), pluckit (code mutation), squackit (code query) |
+| **S2** Coordination | Routes messages, delegates tasks, dampens oscillation, shared state | The harness (Claude Code) + plugin hooks + lackpy (task delegation + PolicyLayer) + DuckDB substrate |
+| **S3** Control | Sets policy, enforces boundaries, adjusts configuration | umwelt (compiled policy via PolicyEngine), kibitzer (in-session mode policy + coaching), lackpy (interpreter validation + sandboxing) |
+| **S3*** Audit | Observes operations directly | agent-riggs (cross-session traces), ratchet-detect (pattern extraction) |
+| **S4** Intelligence | Environmental scanning, adaptation | The LLM (Claude) + Ollama via lackpy (local 1.5B for tool composition) |
+| **S5** Identity | What the system is for, whose values it serves | The human. umwelt encodes their policy. In sub-agent contexts, the parent Claude is S5 for the child. |
 
-Current agent architectures have S1, S4, S5 — but only partial S2 and S3. The coordination function is limited to the harness's built-in permission model (hooks, allowlists); the control function is performed manually by the human or not at all. Retritis fills both gaps: umwelt provides declarative, auditable coordination (S2) — a policy compiled once and enforced at every tool boundary — while kibitzer and agent-riggs provide the observation and adjustment loop (S3).
+Current agent architectures have S1, S4, S5 — but only partial S2 and S3. The coordination function is limited to the harness's built-in permission model (hooks, allowlists); the control function is performed manually by the human or not at all. Retritis fills both gaps: umwelt provides declarative, auditable control (S3) — a policy compiled once and enforced at every tool boundary — while kibitzer provides the in-session observation and adjustment loop, and agent-riggs records traces across sessions for the ratchet (S3*).
 
-The observation tools (S3/S3\*) produce structured data. The ratchet mechanism promotes repeated patterns from observations to templates to tools. Each promotion removes a friction point and frees attention for higher-level work. The ratchet only turns one direction: things that work get crystallized; things that don't get observed and eventually addressed.
+The audit tools (S3*) produce structured data. The ratchet mechanism promotes repeated patterns from observations to templates to tools. Each promotion removes a friction point and frees attention for higher-level work. The ratchet only turns one direction: things that work get crystallized; things that don't get observed and eventually addressed.
 
 ```
 friction → observation → crystallization → tool → less friction → repeat
@@ -321,15 +321,23 @@ friction → observation → crystallization → tool → less friction → repe
 
 ---
 
-## Claude Code Plugins
+## Setup
 
-The quickest way to start treatment. Install the plugin marketplace, then pick your prescriptions.
+### Quick start (global)
+
+This installs the retritis tools and wires them into every Claude Code session.
 
 ```bash
-# Add the retritis pharmacy
+# 1. Install Python packages
+pip install blq-cli jetsam-mcp fledgling squackit kibitzer
+
+# 2. Install DuckDB extensions (run once inside duckdb)
+duckdb -c "INSTALL sitting_duck FROM community; INSTALL duck_tails FROM community; INSTALL duck_hunt FROM community;"
+
+# 3. Add the retritis plugin marketplace (inside Claude Code)
 /plugin marketplace add teaguesterling/retritis
 
-# Fill prescriptions individually
+# 4. Install all plugins
 /plugin install blq@retritis
 /plugin install jetsam@retritis
 /plugin install fledgling@retritis
@@ -337,61 +345,42 @@ The quickest way to start treatment. Install the plugin marketplace, then pick y
 /plugin install kibitzer@retritis
 ```
 
-Each plugin bundles:
+That's it. Each plugin wires up the MCP server, adds routing skills ("instead of grep, use find_definitions"), and optionally installs hooks that nudge you toward the structured tool.
 
-- **MCP server config** — tool availability, no manual `.mcp.json` editing
-- **Skills** — routing instructions ("instead of grep, use find_definitions")
-- **Hooks** (optional) — gentle warnings when you reach for bash instead of the structured tool
+### Per-project setup
 
-### What a plugin looks like
-
-```
-plugins/<name>/
-  .claude-plugin/plugin.json      — manifest (name, description, version)
-  .mcp.json                       — MCP server config
-  skills/<name>-workflow/SKILL.md  — routing table + tool reference
-  hooks/                          — optional
-    hooks.json                    — hook registration
-    <name>-warn.sh                — hook script
-```
-
-### Prerequisites
-
-Each tool is its own package. The plugin just wires it into Claude Code.
-
-```sql
--- DuckDB extensions (install once inside duckdb)
-INSTALL sitting_duck FROM community;
-INSTALL duck_tails FROM community;
-INSTALL duck_hunt FROM community;
-```
+Some tools need project-level initialization:
 
 ```bash
-# Python packages
-pip install blq-cli          # blq
-pip install jetsam-mcp       # jetsam
-pip install fledgling        # fledgling
-pip install squackit         # squackit
-pip install kibitzer         # kibitzer
+# Initialize fledgling's DuckDB views for this project
+fledgling init
+
+# Register blq commands for this project's build system
+blq register test "pytest"
+blq register build "make"
 ```
 
-### Quick start
+### What the plugins provide
+
+Each plugin bundles three things:
+
+| Component | What it does |
+|-----------|-------------|
+| **MCP server config** | Wires the tool's MCP server into Claude Code — no manual `.mcp.json` editing |
+| **Skills** | Routing instructions that teach Claude when to use the tool ("instead of grep, use find_definitions") |
+| **Hooks** (optional) | Gentle warnings when you reach for bash instead of the structured tool |
+
+### Verifying your setup
 
 ```bash
-# 1. Install the core tools
-pip install blq-cli jetsam-mcp fledgling squackit
+# Check that MCP servers are responding (inside Claude Code)
+/mcp
 
-# 2. Add the plugin marketplace
-/plugin marketplace add teaguesterling/retritis
+# Check that DuckDB extensions are installed
+duckdb -c "SELECT extension_name, installed FROM duckdb_extensions() WHERE extension_name IN ('sitting_duck', 'duck_tails', 'duck_hunt');"
 
-# 3. Install plugins
-/plugin install blq@retritis jetsam@retritis fledgling@retritis squackit@retritis
-
-# 4. Bootstrap your project
-init-dev    # auto-detects project type, configures tools
-
-# 5. Start working
-claude      # tools are available immediately
+# Check that Python packages are available
+blq --version && jetsam --version && fledgling --version && squackit --version && kibitzer --version
 ```
 
 ---
@@ -399,6 +388,20 @@ claude      # tools are available immediately
 ## Clinical examples
 
 See **[EXAMPLES.md](EXAMPLES.md)** for seven case studies showing how the tools compose in practice: bug diagnosis, blast-radius refactoring, self-fixing errors, codebase tours, unified policy, crash recovery, and teaching a model your API.
+
+---
+
+## Clinical trial status
+
+This entire suite is an experiment. Not a product announcement — a hypothesis under test.
+
+The hypothesis: structured, composable tooling around an LLM agent reduces friction enough to compound. Each tool should free attention for higher-level work. The ratchet should turn. The VSM mapping should hold — not as decoration, but as a predictive model for where the gaps are and what to build next.
+
+Does it actually work? Honestly — some of it. blq and jetsam have been load-bearing for months. squackit and fledgling changed how I navigate code. kibitzer catches real mistakes. umwelt is starting to prove that one policy language can replace five config files. But lackpy is still young, agent-riggs hasn't been battle-tested outside my own workflows, and pluckit is more promise than practice. The ratchet turns, but not every tooth catches.
+
+The experiment is tracked across ~250 runs with structured logging. Failures are categorized into a shared taxonomy. What works gets promoted; what doesn't gets observed and eventually addressed or abandoned. The suite builds itself — most of these tools were written with earlier versions of themselves. That's either a virtuous cycle or a hall of mirrors, and telling the difference is part of the experiment.
+
+If you're interested in the methodology: the [blog](https://judgementalmonad.com) documents the thinking as it develops, including the parts that turned out to be wrong.
 
 ---
 

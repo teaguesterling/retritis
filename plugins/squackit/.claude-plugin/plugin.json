@@ -6,8 +6,8 @@
     "name": "Teague Sterling",
     "email": "teaguesterling@users.noreply.github.com"
   },
-  "homepage": "https://github.com/teague/squackit",
-  "repository": "https://github.com/teague/squackit",
+  "homepage": "https://github.com/teaguesterling/squackit",
+  "repository": "https://github.com/teaguesterling/squackit",
   "license": "MIT",
   "keywords": ["code-intelligence", "mcp", "ast", "duckdb", "squackit"]
 }
