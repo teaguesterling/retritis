@@ -43,7 +43,7 @@ plugins/<name>/
 |--------|---------|------|-------------|
 | blq | `pip install blq-cli` | teaguesterling/blq-cli | `blq mcp serve` |
 | jetsam | `pip install jetsam-mcp` | teaguesterling/jetsam | `jetsam serve` |
-| fledgling | `pip install fledgling` | teaguesterling/fledgling | `fledgling mcp serve` |
+| fledgling | `pip install fledgling-mcp` | teaguesterling/fledgling | `fledgling-mcp serve` |
 | squackit | `pip install squackit` | teaguesterling/squackit | `squackit mcp serve` |
 | kibitzer | `pip install kibitzer` | teaguesterling/kibitzer | `kibitzer mcp serve` |
 

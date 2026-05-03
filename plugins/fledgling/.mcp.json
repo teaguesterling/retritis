@@ -1,7 +1,7 @@
 {
   "fledgling": {
-    "cwd": ".",
-    "command": "duckdb",
-    "args": ["-init", ".fledgling-init.sql"]
+    "command": "fledgling-mcp",
+    "args": ["serve"],
+    "type": "stdio"
   }
 }
