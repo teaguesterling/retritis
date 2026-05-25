@@ -1,0 +1,10 @@
+{
+  "name": "agent-riggs",
+  "description": "Cross-session memory and analysis for AI agents — trust scoring, failure-stream analysis, and pattern (ratchet) promotion",
+  "version": "1.0.0",
+  "author": { "name": "Teague Sterling", "email": "teaguesterling@users.noreply.github.com" },
+  "homepage": "https://github.com/teaguesterling/agent-riggs",
+  "repository": "https://github.com/teaguesterling/agent-riggs",
+  "license": "MIT",
+  "keywords": ["memory", "trust", "analysis", "mcp", "agent-riggs"]
+}

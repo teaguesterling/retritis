@@ -1,0 +1,21 @@
+{
+  "description": "Kibitzer plugin — on-the-fly agent training. PreToolUse: path guard + interceptors (suggests structured alternatives to grep/git/build). PostToolUse: mode controller + coach.",
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "",
+        "hooks": [
+          { "type": "command", "command": "${CLAUDE_PLUGIN_ROOT}/hooks/kibitzer-pre.sh", "timeout": 10 }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "",
+        "hooks": [
+          { "type": "command", "command": "${CLAUDE_PLUGIN_ROOT}/hooks/kibitzer-post.sh", "timeout": 10 }
+        ]
+      }
+    ]
+  }
+}

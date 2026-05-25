@@ -1,0 +1,10 @@
+{
+  "name": "umwelt",
+  "description": "Declarative agent-permission policy — CSS-like .umw world files defining what an agent can see/edit/call; compiles to policy consumed by kibitzer, lackpy, and sandbox builders",
+  "version": "1.0.0",
+  "author": { "name": "Teague Sterling", "email": "teaguesterling@users.noreply.github.com" },
+  "homepage": "https://github.com/teaguesterling/umwelt",
+  "repository": "https://github.com/teaguesterling/umwelt",
+  "license": "MIT",
+  "keywords": ["policy", "permissions", "sandbox", "umwelt"]
+}

@@ -1,0 +1,10 @@
+{
+  "name": "lackpy",
+  "description": "Micro-inferencer — translates natural-language intent into sandboxed tool-composition programs via a local model (Ollama)",
+  "version": "1.0.0",
+  "author": { "name": "Teague Sterling", "email": "teaguesterling@users.noreply.github.com" },
+  "homepage": "https://github.com/teaguesterling/lackpy",
+  "repository": "https://github.com/teaguesterling/lackpy",
+  "license": "MIT",
+  "keywords": ["inference", "intent", "sandbox", "ollama", "mcp", "lackpy"]
+}
