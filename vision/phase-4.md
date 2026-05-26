@@ -55,6 +55,13 @@ and the day-one ambiguities are settled:
 The calibration pass is itself a committed artifact (`vision/phase-4-baseline.md` + the
 harness run through blq) — cheap insurance against discovering arbitrary bars mid-build.
 
+> **DONE (2026-05-26):** the calibration rig is built and run. `bench/phase4/` holds the
+> 16-scenario corpus + harness (`checks.py`/`runner.py`/`report.py`); the OFF/proxy
+> baseline ran (N=5); pinned bars + locked decisions are in
+> [phase-4-baseline.md](./phase-4-baseline.md). The **C** latency bar is calibrated from
+> real numbers (cold ~4.2s → bar p95 < 435ms); **A/B** cost bars stay provisional until
+> the full agent runner baselines them. Workstreams C/B/A can now start against real bars.
+
 ---
 
 ## 2. Workstream C — persistent fact substrate *(do first; cheap, unblocks A & B's repeated reads)*

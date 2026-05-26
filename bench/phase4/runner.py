@@ -56,9 +56,27 @@ def run_agent(scenario: dict, fixture: Path, cfg: CalibrationConfig, rec: RunRec
     as-is (a buggy fixture fails its check -> the baseline 'cost' of the unaided state).
     FULL mode (TODO) drives a real agent on goal.md and captures turns/tokens/walltime
     + the kibitzer/blq trace."""
-    if cfg.runner_mode == "full":
-        raise NotImplementedError("full-agent driver: drive Claude Code/SDK on goal.md, capture trace (TODO)")
-    # proxy mode: nothing to do; score() reflects the fixture's current state.
+    if cfg.runner_mode != "full":
+        return  # proxy: score() reflects the fixture as-is
+    import shutil, json as _json
+    if not shutil.which("claude"):
+        raise NotImplementedError("full mode needs the `claude` CLI on PATH")
+    prompt = (scenario["goal"].strip() +
+              "\n\nFix the issue in THIS repository so the relevant tests pass. "
+              "Edit files directly; do not ask for confirmation.")
+    cmd = ["claude", "-p", prompt, "--output-format", "json",
+           "--permission-mode", "acceptEdits", "--max-budget-usd", str(cfg.max_budget_usd)]
+    t0 = time.time()
+    proc = subprocess.run(cmd, cwd=str(fixture), capture_output=True, text=True, timeout=cfg.agent_timeout_s)
+    rec.walltime_s = round(time.time() - t0, 2)
+    try:
+        data = _json.loads(proc.stdout)
+        rec.turns = data.get("num_turns")
+        u = data.get("usage") or {}
+        rec.tokens = (u.get("input_tokens") or 0) + (u.get("output_tokens") or 0)
+        rec.detail = str(data.get("subtype") or data.get("result", ""))[:120]
+    except Exception:
+        rec.detail = f"agent-json-parse-failed: {(proc.stdout or proc.stderr)[-140:]}"
 
 
 def run_one(sid: str, cfg: CalibrationConfig, run_idx: int) -> RunRecord:

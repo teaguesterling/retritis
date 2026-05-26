@@ -25,6 +25,8 @@ class CalibrationConfig:
     corpus_dir: Path = Path(__file__).parent / "corpus"
     out_dir: Path = Path(__file__).parent / "results"
     fixtures_root: Path = Path.home() / "Projects"   # where fixture repos (fledgling, ...) live
+    max_budget_usd: float = 0.50    # full mode: per-run cost cap (claude --max-budget-usd)
+    agent_timeout_s: int = 900      # full mode: per-run wall timeout
 
     def label(self) -> str:
         on = "".join(k for k in INTEGRATIONS if self.integrations.get(k))

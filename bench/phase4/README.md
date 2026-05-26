@@ -32,6 +32,21 @@ strict/meta-path editable is ever used, the only robust fix is a **per-fixture v
 `runner.py`'s `reset_fixture` should grow that isolation before the baseline is trusted —
 this is a real T1 requirement for the runner, not a footnote.
 
+## Full agent runner (`runner_mode="full"`)
+Implemented: `run_agent` drives `claude -p --output-format json --permission-mode acceptEdits
+--max-budget-usd <cap>` in the fixture worktree, then `score` checks whether the agent's
+edits make the check pass. This is the A-loop machine (integrations OFF = unaided baseline;
+ON = with a seeded ratchet, once workstream A exists).
+
+**Validated 2026-05-26:** one unaided S01 run drove the agent end-to-end (44.6s), reset the
+fixture, and scored — proving the machine works. Two refinements before trusting A/B cost
+numbers: (1) the agent did not resolve S01 under the $0.50 cap (raise the budget for real
+A/B runs), and (2) `num_turns`/`usage` JSON keys returned null — verify against the actual
+`claude -p` json schema. Cost metrics aren't needed until the A/B runs (post-workstream-A),
+so these are deferred, not blocking.
+
 ## Status
-Scaffold + S01. Next per the calibration doc: flesh the remaining ~17 scenarios, build the
-`full` runner (its own T1), run the OFF baseline N=5, pin bars into `vision/phase-4-baseline.md`.
+Corpus (16) + harness + OFF/proxy baseline + calibrated C bars: **done** (see
+`../../vision/phase-4-baseline.md`). Full runner: **built + validated functional**. Next:
+build workstream C (the cheap unblock), then re-baseline A/B cost with the full runner once
+A exists.
