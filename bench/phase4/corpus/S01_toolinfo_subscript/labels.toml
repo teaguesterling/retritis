@@ -1,0 +1,17 @@
+# Ground truth for scoring (adoption + false-promotion in workstream A).
+id = "S01_toolinfo_subscript"
+archetype = "api-drift-compat-break"
+feeds = ["A", "C"]
+
+# The known-correct fix, for adoption scoring (did the agent take this?) and for
+# seeding the ratchet store in the repeat-failure A/B (S12+).
+[fix]
+file = "fledgling/pro/server.py"
+summary = "ToolInfo is a dataclass: use .macro_name / .params, not ['name'] / ['params']"
+before = 'macro_name = macro_info["name"]'
+after  = "macro_name = macro_info.macro_name"
+
+# What a correct in-session suggestion looks like (false-promotion check).
+[expected_suggestion]
+fingerprint = "TypeError: 'ToolInfo' object is not subscriptable"
+points_at   = "fledgling/pro/server.py:184"
