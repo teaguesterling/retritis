@@ -1,1 +1,4 @@
 results/_work/
+__pycache__/
+*.pyc
+.kibitzer/
