@@ -15,7 +15,7 @@ The ecosystem guide marks these "open." They are **half-built**; the gaps are na
 
 | Workstream | What already exists | The actual gap |
 |---|---|---|
-| **A · learn loop** | agent-riggs: full `ingest` → trust EWMA (`_store_turn`/`_store_failure`) → `ratchet/candidates.py` → `ratchet-{promote,reject,history}` CLI, in a **DuckDB store**. It *produces* scored, promoted "ratchets." | **No in-session consumer.** kibitzer does not read promoted ratchets back; only a WIP `lackpy trees/trace-log` worktree references riggs. The producer exists; the consumer doesn't. |
+| **A · learn loop** | agent-riggs: full `ingest` → trust EWMA (`_store_turn`/`_store_failure`) → `ratchet/candidates.py` → `ratchet-{promote,reject,history}` CLI, in a **DuckDB store**. It *produces* scored, promoted "ratchets." | **No in-session consumer.** kibitzer doesn't read `ratchet_decisions` back. (The lackpy `trace-log` worktree only *feeds* riggs — producer-side, writes `.lackpy/traces.jsonl` for ingest — not a consumer.) The producer exists; a net-new `RatchetConsumer` is needed. |
 | **B · policy** | kibitzer `PolicyConsumer` with 3 levels (`from_db(policy.db)` / `from_engine()` / config-only); lackpy `policy/sources/umwelt.py`; umwelt `compilers/`. | **End-to-end path unverified** + no guarantee kibitzer and lackpy resolve the *same* policy identically. |
 | **C · substrate** | fledgling `connect()` (connection.py:354); `rebuild_fts()` → `create_fts_index(overwrite=1)`. | FTS/AST/git facts are **rebuilt in-memory (~2s) per process** — too costly for per-hook coaching. |
 
@@ -64,16 +64,20 @@ harness run through blq) — cheap insurance against discovering arbitrary bars 
 
 ---
 
-## 2. Workstream C — persistent fact substrate *(do first; cheap, unblocks A & B's repeated reads)*
+## 2. Workstream C — persistent fact substrate *(second, after B; a `connect()` signature change + staleness — unblocks A's repeated reads)*
 
 **Target.** A file-backed per-project DuckDB (`.fledgling/cache.duckdb`, co-located with
 blq's `.bird`) holding AST + git + FTS. Hooks/tools **attach** instead of rebuilding;
 the cache invalidates on file mtime / `HEAD` change and rebuilds only the stale slice.
 
-**Wiring.**
-1. `fledgling.connect(persist=<path>, read_only=<bool>)` — open the file DB; if FTS/AST
-   tables are absent or stale, build; else attach. Single-writer (DuckDB): a builder
-   process writes, hook/tool readers open `read_only=True`.
+**Wiring.** *(Code-grounded 2026-05-26: `connect()` today is
+`connect(init, root, profile, modules)` — **no `database`/persist knob; the DuckDB is
+in-memory**. So C is a signature + plumbing change, not a config toggle — larger than the
+"cheap unblock" framing implied.)*
+1. Add a persist param — `fledgling.connect(persist=<path>, read_only=<bool>)` — threaded to
+   the internal `duckdb.connect(database=…)`; if FTS/AST tables are absent or stale, build;
+   else attach. Single-writer (DuckDB): a builder process writes, hook/tool readers open
+   `read_only=True`.
 2. A **staleness key** per source file: `(path, mtime, blob_sha)`. Rebuild a file's AST/FTS
    rows only when its key changes; `rebuild_fts()` becomes incremental over changed ids.
 3. squackit + the kibitzer hook open the shared cache read-only.
@@ -110,7 +114,7 @@ build returns either old-consistent or new, never torn.
 
 ---
 
-## 3. Workstream B — one policy, two enforcers *(parallel with C; mostly wiring + conformance)*
+## 3. Workstream B — one policy, two enforcers *(do FIRST — smallest + safety-critical; mostly wiring + conformance)*
 
 **Target.** A single `.umw` compiles to `policy.db`; **kibitzer** enforces it in-agent via
 `PolicyConsumer.from_db(policy.db)` **and lackpy** validates generated programs against the
@@ -161,9 +165,13 @@ the generated corpus is the gate. Plus a live scenario: a lackpy-generated progr
 seeds from it. agent-riggs already *promotes*; we wire the **consumer**.
 
 **Wiring.**
-1. **Reconcile with the `lackpy trees/trace-log` worktree first** — there is an existing
-   promotion-consumption attempt; build on it, don't greenfield over it. Decide: does the
-   consumer live in kibitzer (in-agent coaching), lackpy (program seeding), or both.
+1. **The in-session consumer is net-new.** *(Correction from reading the code: the lackpy
+   `trace-log` worktree is producer-side — it appends `.lackpy/traces.jsonl` for riggs to
+   ingest, **not** a promotion consumer. There is nothing to reconcile with.)* Build a
+   `RatchetConsumer` (modeled on kibitzer's `PolicyConsumer`) that reads **promoted rows from
+   agent-riggs' `ratchet_decisions` table** (a candidate is `{candidate_key, evidence}`) and
+   matches `candidate_key` to the current failure fingerprint. Decide: kibitzer (coaching),
+   lackpy (seeding), or both.
 2. Define the **read contract**: kibitzer queries agent-riggs' DuckDB ratchet store for
    *promoted* ratchets matching the current context (failure fingerprint / file / tool),
    ordered by trust. Reuse kibitzer's `PolicyConsumer`-style pattern (graceful fallback,
@@ -241,21 +249,28 @@ The distinctive bar — *does it help the process* — needs a real measurement 
 ## 6. Sequencing, dependencies, logistics
 
 ```
-   C (persistent substrate) ──┐
-                              ├──▶  A (learn loop)   ← needs cheap repeated reads (C)
-   B (one policy, two enf.) ──┘                        and a stable trace
+   B (policy conformance)  ──▶  C (persistent substrate)  ──▶  A (learn loop)
+   smallest · safety-crit.      signature change to            net-new RatchetConsumer
+   (PolicyConsumer exists)      fledgling.connect()            + full-agent A/B
 ```
 
-- **C and B are independent** → parallel. **A is last** (wants C's cheap reads + a settled
-  ratchet schema; reconcile with the lackpy worktree at A's start).
+- **Re-sequenced from the code-grounded assessment (2026-05-26).** The plan first put C as
+  the "cheap unblock," but reading the code flipped the order: **B is smallest + lowest-risk**
+  (kibitzer `PolicyConsumer.from_db` already exists, so the workstream is essentially the
+  conformance test + pointing lackpy at the same `policy.db`) **and** it's the safety-critical
+  invariant — **do B first**. **C is larger than a flag** (a `connect()` signature + plumbing
+  change, §2). **A is last** (net-new `RatchetConsumer` + the full-agent A/B; still wants C's
+  cheap repeated reads first).
 - **Gate per workstream:** T1 → T2 → T3; do not merge a workstream until its **T3 bar**
   clears, not just T1/T2.
 - **Repos & commits:** fledgling (C), kibitzer + lackpy + umwelt (B), agent-riggs +
   kibitzer + lackpy (A). All signed; on snape (or longbottom with the 24h passphrase cache
   primed). Branch per workstream (`phase4/persistent-cache`, `phase4/policy-conformance`,
   `phase4/learn-loop`); each lands with its T1/T2 tests + a T3 report committed alongside.
-- **Reconcile-first:** read `lackpy trees/trace-log` and kibitzer `umwelt/consumer.py` in
-  full before writing A and B respectively (the patterns to reuse already exist).
+- **Read-first:** kibitzer `umwelt/consumer.py` (the `PolicyConsumer` pattern B & A both
+  reuse) and agent-riggs' `plugins/ratchet.py` (the `ratchet_decisions` schema = A's read
+  contract). The lackpy `trace-log` worktree is producer-side (traces for ingest), **not** a
+  consumer to reconcile with.
 
 ## 7. Why this is the foundation for the vision, not a detour
 
