@@ -1,0 +1,352 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Retritis — how the suite works together</title>
+<style>
+:root{
+  --bg:#0a0e13; --bg2:#11161d; --bg3:#0d1419; --fg:#d0c0a8; --dim:#8a8273;
+  --border:#232a33; --cyan:#63D0DF; --coral:#FDA1A0; --sky:#A1C0EB;
+  --green:#92CF9C; --yellow:#F7E062; --purple:#c9a6f0;
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{margin:0;background:var(--bg);color:var(--fg);
+  font:16px/1.6 -apple-system,"Segoe UI",Roboto,sans-serif;-webkit-font-smoothing:antialiased}
+a{color:var(--sky)}
+code,.mono{font-family:"JetBrains Mono","Fira Code",ui-monospace,Menlo,monospace}
+nav{position:sticky;top:0;z-index:20;background:rgba(10,14,19,.93);backdrop-filter:blur(8px);
+  border-bottom:1px solid var(--border);padding:.6rem 1.2rem;display:flex;gap:1rem;flex-wrap:wrap;align-items:center}
+nav .brand{font-weight:800;color:var(--cyan);letter-spacing:.5px}
+nav a{color:var(--dim);text-decoration:none;font-size:.9rem}
+nav a:hover{color:var(--fg)}
+main{max-width:980px;margin:0 auto;padding:2rem 1.2rem 6rem}
+h1{font-size:2.3rem;margin:.2rem 0}
+h2{font-size:1.5rem;color:var(--cyan);margin:3rem 0 .6rem;border-bottom:1px solid var(--border);padding-bottom:.3rem}
+h3{font-size:1.1rem;color:var(--coral);margin:1.4rem 0 .4rem}
+.lede{color:var(--dim);font-size:1.15rem;max-width:70ch}
+.pill{display:inline-block;font-size:.7rem;font-weight:700;letter-spacing:.5px;text-transform:uppercase;
+  padding:.12em .5em;border-radius:999px;border:1px solid var(--border);vertical-align:middle}
+.ok{color:var(--green);border-color:var(--green)}
+.partial{color:var(--yellow);border-color:var(--yellow)}
+.missing{color:var(--coral);border-color:var(--coral)}
+
+/* layer stack */
+.stack{display:flex;flex-direction:column;gap:.5rem;margin:1.2rem 0}
+.layer{background:var(--bg2);border:1px solid var(--border);border-left:4px solid var(--cyan);
+  border-radius:8px;padding:.8rem 1rem;cursor:pointer;transition:.15s}
+.layer:hover{border-left-color:var(--coral);transform:translateX(3px)}
+.layer .lt{font-weight:700;color:var(--fg)}
+.layer .ld{color:var(--dim);font-size:.9rem}
+.layer .members{display:none;margin-top:.6rem;flex-wrap:wrap;gap:.4rem}
+.layer.open .members{display:flex}
+.chip{font-size:.8rem;background:var(--bg3);border:1px solid var(--border);border-radius:6px;padding:.2em .55em;color:var(--cyan)}
+
+/* substrates */
+.subs{display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin:1.2rem 0}
+.sub{background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:1.1rem 1.2rem}
+.sub.facts{border-top:4px solid var(--cyan)}
+.sub.policy{border-top:4px solid var(--purple)}
+.sub h3{margin-top:0}
+
+/* stepper */
+.stepper{margin:1.2rem 0}
+.steps{display:flex;gap:.4rem;flex-wrap:wrap;margin-bottom:.8rem}
+.step-btn{flex:1;min-width:130px;background:var(--bg2);border:1px solid var(--border);color:var(--dim);
+  border-radius:8px;padding:.5rem .6rem;cursor:pointer;font-size:.85rem;font-weight:600;text-align:left}
+.step-btn .n{color:var(--cyan);font-weight:800;margin-right:.3em}
+.step-btn.active{border-color:var(--cyan);color:var(--fg);background:var(--bg3)}
+.step-panel{display:none;background:var(--bg3);border:1px solid var(--border);border-left:4px solid var(--cyan);
+  border-radius:8px;padding:1rem 1.1rem}
+.step-panel.active{display:block}
+
+/* terminal mock */
+.term{background:#06090d;border:1px solid var(--border);border-radius:8px;overflow:hidden;margin:.7rem 0;font-size:.82rem}
+.term .bar{background:var(--bg2);padding:.35rem .7rem;border-bottom:1px solid var(--border);color:var(--dim);font-size:.72rem}
+.term pre{margin:0;padding:.8rem 1rem;overflow-x:auto;line-height:1.5;white-space:pre-wrap}
+.term .pr{color:var(--green)}
+.term .tool{color:var(--cyan)}
+.term .cmt{color:var(--dim);font-style:italic}
+.term .out{color:var(--fg)}
+.term .warn{color:var(--yellow)}
+
+/* tabs */
+.tabs{display:flex;gap:.4rem;flex-wrap:wrap;margin:1rem 0 .6rem}
+.tab{background:var(--bg2);border:1px solid var(--border);color:var(--dim);border-radius:999px;
+  padding:.35rem .9rem;cursor:pointer;font-size:.85rem;font-weight:600}
+.tab.active{border-color:var(--coral);color:var(--coral)}
+.tabpanel{display:none}
+.tabpanel.active{display:block}
+
+/* cards */
+.cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:.8rem;margin:1rem 0}
+.card{background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:.9rem 1rem}
+.card .nm{font-weight:700;color:var(--cyan)}
+.card .ds{color:var(--dim);font-size:.88rem;margin:.3rem 0}
+
+table{border-collapse:collapse;width:100%;margin:1rem 0;font-size:.92rem}
+th,td{text-align:left;padding:.5rem .7rem;border-bottom:1px solid var(--border);vertical-align:top}
+th{color:var(--cyan)}
+.callout{background:var(--bg2);border:1px solid var(--border);border-left:4px solid var(--yellow);
+  border-radius:8px;padding:.9rem 1.1rem;margin:1.2rem 0}
+.callout.tip{border-left-color:var(--green)}
+.callout .lbl{font-weight:800;text-transform:uppercase;font-size:.7rem;letter-spacing:1px;color:var(--dim)}
+footer{color:var(--dim);font-size:.85rem;margin-top:4rem;border-top:1px solid var(--border);padding-top:1.2rem}
+.hint{font-size:.8rem;color:var(--dim);font-style:italic}
+</style>
+</head>
+<body>
+<nav>
+  <span class="brand">retritis</span>
+  <a href="#ideas">Ideas</a>
+  <a href="#stack">Stack</a>
+  <a href="#substrates">Substrates</a>
+  <a href="#loop">The loop</a>
+  <a href="#components">Components</a>
+  <a href="#usecases">Use cases</a>
+  <a href="#state">State</a>
+  <a href="#status">Status</a>
+</nav>
+<main>
+  <h1>Retritis</h1>
+  <p class="lede">Palliative treatments for agent-assisted development. A suite of Claude-Code
+  plugins that turn your code, git history, build output, and policies into <b>queryable SQL</b>,
+  so an agent can <i>observe → understand → act → learn</i> instead of grepping blind.
+  This page describes how the pieces fit together as built — and how they <i>should</i> fit.</p>
+  <p class="hint">Click layers to expand · step through the loop · switch use-case tabs. All mock examples are illustrative.</p>
+
+  <h2 id="ideas">The ideas behind it</h2>
+  <p>The mechanics below are downstream of a few convictions. Stated plainly:</p>
+
+  <div class="callout"><span class="lbl">Thesis</span>
+  <p>Agent-assisted development has <b>chronic aches</b> — context bloat, blind tool use, no memory between
+  sessions, easy-to-miss guardrails. Retritis isn't a cure; it's a set of <b>palliatives</b>. The unifying move:
+  turn everything an agent must reason about — code, git, logs, docs, <i>and</i> what it's allowed to do — into
+  <b>queryable data over two shared substrates</b>, so tools compose by <i>data</i>, not by orchestration.</p></div>
+
+  <h3>1 · Two substrates, composition by join</h3>
+  <p>The keystone. <b>DuckDB = facts</b> (what <i>is</i>: ASTs, history, build output). <b>SQLite = policy</b>
+  (what's <i>allowed</i>). Every tool reads/writes one of these. No tool calls another's API — they meet in shared
+  tables and compose with a SQL join. Integration becomes <i>emergent</i> instead of hand-wired.</p>
+
+  <h3>2 · Structured beats textual</h3>
+  <p>Agents drown in raw text — a grep dump is tokens without shape. Hand them <b>compact, ranked, queryable
+  structure</b> (AST nodes, commit rows, parsed errors) and the same answer costs 73–99% fewer tokens and is
+  <i>more</i> correct (real call-graph edges, not string matches).</p>
+
+  <h3>3 · Determinism where it suffices; inference only where it's needed</h3>
+  <p>Coaching and interception are <b>rules, not an LLM</b> (kibitzer decides without a model in the loop —
+  cheap, fast, predictable). Reserve inference for the genuinely fuzzy step — intent→program — and do it with a
+  <b>small local model</b> (lackpy), not a frontier API. Spend compute proportional to the actual ambiguity.</p>
+
+  <h3>4 · Capability as declarative data</h3>
+  <p>What an agent may see, edit, call, and trigger is a <b>cascading, CSS-like policy</b> (umwelt) compiled to the
+  shared SQLite store — not config scattered across tools. One source of truth, many consumers.</p>
+
+  <h3>5 · The value is the loop, not any one tool</h3>
+  <p><b>observe → understand → act → learn.</b> Each tool is a station; the payoff is the cycle closing — a fix
+  this session becomes a suggestion the next (agent-riggs: cross-session memory, trust scoring, pattern promotion).
+  The system should get <i>better the more it's used</i>.</p>
+
+  <h3>6 · Local-first, small, composable</h3>
+  <p>In-process DuckDB, local models, no heavyweight infra. Each tool is single-purpose and composes through the
+  substrate — so the suite is a toolkit you assemble, not a monolith you adopt.</p>
+
+  <div class="callout tip"><span class="lbl">The bet</span>
+  <p>As models get more capable, the bottleneck moves from "can it do the task" to "does the agent have the right
+  <b>context, guardrails, and memory</b>." Retritis bets that a shared-substrate, structured, policy-governed,
+  self-improving toolchain is how an agent becomes a <i>reliable collaborator</i> rather than an impressive-but-erratic
+  one. <b>Honest caveat:</b> the wiring has largely caught up to the ideas — all eight plugins are packaged, the
+  suites are green, and the loop has run for real (see Status) — but the <i>closed</i> learn-loop and persistent
+  doc-context remain aspirational. The principles are settled; the plumbing is ~80% there.</p></div>
+
+  <h2 id="stack">The stack</h2>
+  <p>Everything composes through shared data, not bespoke glue. Top layers consume the layers below.</p>
+  <div class="stack" id="stack-el">
+    <div class="layer open"><div class="lt">Layer 4 · Consumers</div><div class="ld">Claude Code, agents, IDE extensions — talk to the suite over MCP</div>
+      <div class="members"><span class="chip">Claude Code</span><span class="chip">/plugin @retritis</span></div></div>
+    <div class="layer"><div class="lt">Layer 3 · Act &amp; decide</div><div class="ld">git workflows, code mutation, intent→program, policy enforcement</div>
+      <div class="members"><span class="chip">jetsam</span><span class="chip">pluckit</span><span class="chip">lackpy</span><span class="chip">umwelt</span><span class="chip">nsjail-python</span></div></div>
+    <div class="layer"><div class="lt">Layer 2 · Run &amp; observe</div><div class="ld">capture build output, watch tool calls, remember across sessions</div>
+      <div class="members"><span class="chip">blq</span><span class="chip">kibitzer</span><span class="chip">agent-riggs</span></div></div>
+    <div class="layer"><div class="lt">Layer 1 · Query the code</div><div class="ld">unified SQL views + MCP server agents actually call</div>
+      <div class="members"><span class="chip">squackit</span><span class="chip">fledgling</span><span class="chip">pluckit</span></div></div>
+    <div class="layer"><div class="lt">Layer 0 · DuckDB extensions</div><div class="ld">the raw facts: ASTs, git, logs, docs</div>
+      <div class="members"><span class="chip">sitting_duck</span><span class="chip">duck_tails</span><span class="chip">duck_hunt</span><span class="chip">duckdb_markdown</span><span class="chip">read_lines</span></div></div>
+  </div>
+
+  <h2 id="substrates">Two substrates</h2>
+  <p>The trick that makes composition emergent: there are only <b>two</b> shared stores. Everything
+  reads/writes one of them, so tools join each other's data without coordinating.</p>
+  <div class="subs">
+    <div class="sub facts"><h3>DuckDB — <span style="color:var(--cyan)">facts</span></h3>
+      <p>AST structure (sitting_duck) + git history (duck_tails) + build/test logs (duck_hunt, blq)
+      + cross-file macros (fledgling) + session traces (agent-riggs) — all land in one DB.</p>
+      <p class="hint">→ "show me every caller of <code>validate_token</code> that changed since the failing build" is <i>one query</i>.</p></div>
+    <div class="sub policy"><h3>SQLite — <span style="color:var(--purple)">policy</span></h3>
+      <p>umwelt compiles your CSS-like <code>.umw</code> world files into a resolved-properties table.
+      kibitzer, lackpy, and the sandbox builders all read the same PolicyEngine.</p>
+      <p class="hint">→ "can this agent edit <code>src/auth/**</code> and call <code>git push</code>?" is <i>one lookup</i>.</p></div>
+  </div>
+
+  <h2 id="loop">The loop (how it <i>should</i> run)</h2>
+  <div class="stepper" id="loop-el">
+    <div class="steps">
+      <button class="step-btn active" data-s="0"><span class="n">1</span>Observe</button>
+      <button class="step-btn" data-s="1"><span class="n">2</span>Understand</button>
+      <button class="step-btn" data-s="2"><span class="n">3</span>Decide</button>
+      <button class="step-btn" data-s="3"><span class="n">4</span>Act</button>
+      <button class="step-btn" data-s="4"><span class="n">5</span>Learn</button>
+    </div>
+    <div class="step-panel active">
+      <h3>1 · Observe — blq captures the failure</h3>
+      <p>Instead of pasting terminal output into chat, the build runs through blq; the failure becomes rows.</p>
+      <div class="term"><div class="bar">blq (MCP)</div><pre><span class="pr">agent▸</span> <span class="tool">blq.errors(run="latest")</span>
+<span class="out">test/auth/test_token.py:42  AssertionError  validate_token() returned None
+src/auth/token.py:18        TypeError       expected str, got NoneType</span></pre></div>
+    </div>
+    <div class="step-panel">
+      <h3>2 · Understand — squackit/fledgling resolve context</h3>
+      <p>Query the DuckDB facts: the definition, its callers, what changed recently.</p>
+      <div class="term"><div class="bar">squackit (MCP)</div><pre><span class="pr">agent▸</span> <span class="tool">squackit.find(".fn#validate_token", with="callers")</span>
+<span class="out">src/auth/token.py:18  def validate_token(raw)        # 3 callers
+↳ login_flow() · refresh() · middleware.authenticate()</span>
+<span class="pr">agent▸</span> <span class="tool">fledgling.recent_changes("src/auth/token.py")</span>
+<span class="out">abc123  "refactor: drop default arg"  2h ago  ← suspicious</span></pre></div>
+    </div>
+    <div class="step-panel">
+      <h3>3 · Decide — kibitzer checks policy, suggests better moves</h3>
+      <p>The agent reaches for raw <code>grep</code>; kibitzer intercepts, checks umwelt policy, offers the structured tool.</p>
+      <div class="term"><div class="bar">kibitzer (PreToolUse hook)</div><pre><span class="pr">agent▸</span> Bash: <span class="out">grep -rn validate_token src/</span>
+<span class="warn">⚠ kibitzer: use squackit.find(".call#validate_token") — structured, ranked, cached.</span>
+<span class="warn">⚠ umwelt: edits to src/auth/** require review mode (policy: auth-guarded).</span></pre></div>
+    </div>
+    <div class="step-panel">
+      <h3>4 · Act — pluckit mutates, lackpy composes, jetsam ships</h3>
+      <p>Either a direct pluckit chain, or describe intent and let lackpy generate a policy-checked, sandboxed program.</p>
+      <div class="term"><div class="bar">pluckit / lackpy / jetsam</div><pre><span class="pr">agent▸</span> <span class="tool">pluckit</span> select('.fn#validate_token').addParam('raw: str').test().save('fix: restore type')
+<span class="cmt"># or, from natural language:</span>
+<span class="pr">agent▸</span> <span class="tool">lackpy</span> "restore the str type on validate_token and run its tests"
+<span class="out">↳ generated: select('.fn#validate_token')...  [policy ✓, sandbox ✓]  → 3 tests pass</span>
+<span class="pr">agent▸</span> <span class="tool">jetsam.ship</span>(msg="fix: validate_token type regression")</pre></div>
+    </div>
+    <div class="step-panel">
+      <h3>5 · Learn — agent-riggs records the pattern</h3>
+      <p>The trace is scored and stored. Next time a similar failure appears, kibitzer/lackpy surface this fix first.</p>
+      <div class="term"><div class="bar">agent-riggs</div><pre><span class="pr">agent▸</span> <span class="tool">agent-riggs.record(trace)</span>
+<span class="out">pattern: "type regression after default-arg drop" → fix template stored (trust 0.0→seed)
+ratchet candidate: promote to kibitzer suggestion after 2 more confirmations</span></pre></div>
+    </div>
+  </div>
+
+  <div class="callout tip"><span class="lbl">Run for real</span>
+  <p>This isn't only a diagram anymore. In one session, <b>observe → understand → act</b> ran end-to-end on the suite
+  itself: blq captured <b>105</b> structured test errors in fledgling, squackit/fledgling localized them to <b>3</b>
+  root causes (a pluckit module rename, a <code>ToolInfo</code> API change, a git-path bug), the fixes landed, and a
+  blq re-run reported <b>0 errors / 860 passing</b>. The <b>learn</b> step (agent-riggs promotion) is still the open
+  end of the loop.</p></div>
+
+  <h2 id="components">Components &amp; status</h2>
+  <p class="hint">Status = whether it's installed + wired into the marketplace today (not code quality — the code is healthy).</p>
+  <div class="cards">
+    <div class="card"><span class="nm">squackit</span> <span class="pill ok">shipped · 0.4.2</span><div class="ds">CLI + MCP code-intelligence server agents call. Built on pluckit + fledgling.</div></div>
+    <div class="card"><span class="nm">fledgling</span> <span class="pill ok">shipped · 0.9.1</span><div class="ds">SQL macros over DuckDB — definitions, callers, similarity, conversation history.</div></div>
+    <div class="card"><span class="nm">pluckit</span> <span class="pill ok">shipped · 0.13.0</span><div class="ds">CSS selectors over ASTs + fluent mutation chains (jQuery for code). PyPI: <code>ast-pluckit</code>.</div></div>
+    <div class="card"><span class="nm">blq</span> <span class="pill ok">shipped</span><div class="ds">Build-log capture + SQL query; stop pasting terminal output into chat.</div></div>
+    <div class="card"><span class="nm">jetsam</span> <span class="pill ok">shipped</span><div class="ds">Git workflow accelerator — save / sync / ship as single commands.</div></div>
+    <div class="card"><span class="nm">kibitzer</span> <span class="pill ok">shipped</span><div class="ds">In-session tool guard + coach; reads umwelt policy.</div></div>
+    <div class="card"><span class="nm">lackpy</span> <span class="pill ok">packaged</span><div class="ds">Intent→sandboxed program via a local model; now in the marketplace. Runs on longbottom's GPU (qwen3:14b-iq4xs) — inference stays local.</div></div>
+    <div class="card"><span class="nm">agent-riggs</span> <span class="pill ok">packaged</span><div class="ds">Cross-session memory, trust scoring, pattern promotion. Packaged as a skill.</div></div>
+    <div class="card"><span class="nm">umwelt</span> <span class="pill ok">packaged</span><div class="ds">CSS-like policy language → SQLite policy substrate. Packaged as a skill.</div></div>
+    <div class="card"><span class="nm">nsjail-python</span> <span class="pill partial">backend</span><div class="ds">Sandbox backend for lackpy; library, no MCP surface.</div></div>
+  </div>
+
+  <h2 id="usecases">Use cases</h2>
+  <div class="tabs" id="uc-tabs">
+    <button class="tab active" data-t="0">Fix a failing test</button>
+    <button class="tab" data-t="1">Refactor safely</button>
+    <button class="tab" data-t="2">Onboard to a codebase</button>
+    <button class="tab" data-t="3">Policy-gated action</button>
+  </div>
+  <div class="tabpanel active">
+    <p><b>Goal:</b> a test fails in CI and you want the agent to fix it without thrashing.</p>
+    <ol><li>blq turns the failure into structured rows (file, line, error).</li>
+    <li>squackit/fledgling resolve the definition + callers + the suspicious recent commit.</li>
+    <li>pluckit applies the minimal fix; jetsam commits with a real message.</li>
+    <li>agent-riggs remembers the shape so the next regression is one suggestion away.</li></ol>
+  </div>
+  <div class="tabpanel">
+    <p><b>Goal:</b> rename/restructure across a codebase without missing callers.</p>
+    <ol><li>squackit <code>.find(".call#oldName")</code> — every reference, ranked, no grep misses.</li>
+    <li>pluckit chain: <code>select(...).rename(...).callers().test()</code> — mutation + verification in one breath.</li>
+    <li>umwelt policy keeps the agent out of paths it shouldn't touch; nsjail runs generated code isolated.</li></ol>
+  </div>
+  <div class="tabpanel">
+    <p><b>Goal:</b> get an agent productive in an unfamiliar repo fast.</p>
+    <ol><li>fledgling <code>project_overview</code> + doc indexing → the lay of the land.</li>
+    <li>duck_tails surfaces who-changed-what; agent-riggs replays prior session context (via ffs on crashes).</li>
+    <li>squackit compound workflows: <code>explore</code> / <code>investigate</code> bundle the common first moves.</li></ol>
+  </div>
+  <div class="tabpanel">
+    <p><b>Goal:</b> let an agent act, but only within bounds you declare.</p>
+    <ol><li>Write a <code>.umw</code> world: which paths are read/edit, which tools are callable, resource limits.</li>
+    <li>umwelt compiles it to the SQLite policy substrate.</li>
+    <li>kibitzer enforces in-session; lackpy validates generated programs against it; nsjail caps the blast radius.</li></ol>
+  </div>
+
+  <h2 id="state">Verified — current state <span class="hint">(2026-05-25)</span></h2>
+  <p>Measured/fixed this pass — not aspirational:</p>
+  <table>
+    <tr><th>Check</th><th>Result</th></tr>
+    <tr><td>MCP server health (initialize handshake)</td><td><span class="pill ok">6/6 green</span> — squackit 41 tools · fledgling 27 · blq 18 · jetsam 24 · kibitzer 3 · lackpy 14 (longbottom, full host)</td></tr>
+    <tr><td>Suite test health (longbottom)</td><td><span class="pill ok">all green</span> — pluckit <b>519</b> · squackit <b>275</b> · fledgling <b>860</b> passing (fledgling was 105 errors before the pluckit-0.13 compat fixes)</td></tr>
+    <tr><td>The loop, run for real</td><td>blq captured <b>105</b> build errors → squackit/fledgling localized <b>3</b> root causes → fixed → blq re-run <b>0</b> errors. observe→understand→act, not illustrative.</td></tr>
+    <tr><td>Context cost vs grep — AST queries (<code>find</code>/<code>find_names</code>)</td><td><b>96–99% fewer tokens</b>, sub-second, and more correct (real AST nodes vs textual matches)</td></tr>
+    <tr><td>Context cost vs grep — BM25 search</td><td><b>73–82% fewer tokens</b>, ranked, ~10–20ms (after a one-time ~2s index build)</td></tr>
+    <tr><td>lackpy intent→pluckit on <code>qwen3:14b-iq4xs</code></td><td><b>4.0/4</b> across 12 intents, ~11s/intent on a 2080 Ti — local inference</td></tr>
+    <tr><td>kibitzer coaching via the packaged hook</td><td><span class="pill ok">fires</span> — path guard denies out-of-mode writes with a ChangeToolMode suggestion</td></tr>
+    <tr><td>Shipped versions</td><td>pluckit <code>0.13.0</code> · squackit <code>0.4.2</code> · fledgling <code>0.9.1</code> — published code now matches working code</td></tr>
+  </table>
+
+  <h2 id="status">Status — fixed vs open</h2>
+  <table>
+    <tr><th>Item</th><th>State</th><th>Detail</th></tr>
+    <tr><td>Launch / PATH</td><td><span class="pill ok">fixed</span></td><td>3 PATH bugs (venv-bin, duckdb CLI, hook-python) → symlinks on <code>~/.local/bin</code> + shebang-resolved hooks; all servers launch</td></tr>
+    <tr><td>FTS / BM25 search</td><td><span class="pill ok">fixed</span></td><td>was dormant ecosystem-wide (unbuilt index); squackit now lazy-builds on first search</td></tr>
+    <tr><td>kibitzer coaching packaging</td><td><span class="pill ok">fixed</span></td><td>retritis plugin now ships PreToolUse/PostToolUse hooks (was MCP + skills only)</td></tr>
+    <tr><td>lackpy model</td><td><span class="pill ok">benchmarked</span></td><td><code>qwen3:14b-iq4xs</code>, 4/4; coder-1.5b retired</td></tr>
+    <tr><td>Marketplace coverage</td><td><span class="pill ok">fixed</span></td><td><b>8 plugins</b> — added lackpy, agent-riggs, umwelt (skills); nsjail-python stays a backend lib (no MCP surface)</td></tr>
+    <tr><td>Full ecosystem host</td><td><span class="pill ok">new</span></td><td>longbottom (RTX 2080 Ti) runs all 6 MCP servers + lackpy local inference — answers the "where does inference live" question</td></tr>
+    <tr><td>Releases / version drift</td><td><span class="pill ok">cut</span></td><td>pluckit 0.13.0 · squackit 0.4.2 · fledgling 0.9.1 — ended the "published ≠ working code" trap (same version string, different code)</td></tr>
+    <tr><td>"Learn" loop</td><td><span class="pill missing">open</span></td><td>agent-riggs → kibitzer/lackpy promotion not wired end-to-end</td></tr>
+    <tr><td>Per-hook FTS persistence</td><td><span class="pill missing">open</span></td><td>doc-context coaching needs a persistent index (per-hook rebuild too costly)</td></tr>
+  </table>
+
+  <div class="callout"><span class="lbl">Honest verdict</span>
+  <p><b>Excellent bones; integration was the gap — and the gap has mostly closed.</b> The two-substrate, compose-by-SQL
+  design is genuinely elegant, and the value is <b>measured — 73–99% less context than grep — not asserted</b>. Going
+  in it was "a pile of great tools," not a system: nearly everything broken was <b>wiring</b> (uninstalled marketplace,
+  three PATH bugs, dormant search, unpackaged coaching, version drift), not code. That's now done — all eight plugins
+  packaged, a full GPU host, green suites, real releases, and the loop run end-to-end on the suite itself. What remains
+  is the harder last stretch: closing the <b>observe→learn loop</b> (agent-riggs promotion) and the persistent-index
+  story. Net — a proven toolkit roughly <b>80% of the way</b> to the cohesive system the catalog describes.</p></div>
+
+  <footer>Authored as an interpretation of the retritis suite · mock examples are illustrative · lives in <code>retritis/docs/index.html</code></footer>
+</main>
+<script>
+// layer expand
+document.querySelectorAll('#stack-el .layer').forEach(l=>l.addEventListener('click',()=>l.classList.toggle('open')));
+// loop stepper
+const sb=document.querySelectorAll('#loop-el .step-btn'), sp=document.querySelectorAll('#loop-el .step-panel');
+sb.forEach(b=>b.addEventListener('click',()=>{const i=+b.dataset.s;
+  sb.forEach(x=>x.classList.remove('active'));sp.forEach(x=>x.classList.remove('active'));
+  b.classList.add('active');sp[i].classList.add('active');}));
+// use-case tabs
+const tb=document.querySelectorAll('#uc-tabs .tab'), tp=document.querySelectorAll('.tabpanel');
+tb.forEach(b=>b.addEventListener('click',()=>{const i=+b.dataset.t;
+  tb.forEach(x=>x.classList.remove('active'));tp.forEach(x=>x.classList.remove('active'));
+  b.classList.add('active');tp[i].classList.add('active');}));
+</script>
+</body>
+</html>
