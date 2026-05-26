@@ -1,0 +1,11 @@
+id = "S02_pluckit_module_rename"
+archetype = "module-rename"
+feeds = ["A"]
+[fix]
+file = "tests/test_e2e_integration.py"
+summary = "pluckit renamed module plugins -> pluckins; update the import"
+before = "from pluckit.plugins.viewer import AstViewer"
+after  = "from pluckit.pluckins.viewer import AstViewer"
+[expected_suggestion]
+fingerprint = "ModuleNotFoundError: No module named 'pluckit.plugins'"
+points_at   = "tests/test_e2e_integration.py:213"

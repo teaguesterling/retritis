@@ -1,0 +1,4 @@
+id = "S13_repeat_path_doubling"
+archetype = "repeat-failure"
+feeds = ["A"]
+seed_from = "S03_read_source_path_doubling"

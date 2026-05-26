@@ -1,0 +1,9 @@
+id = "S03_read_source_path_doubling"
+archetype = "path-join-bug"
+feeds = ["A", "C"]
+[fix]
+file = "sql/source.sql"
+summary = "relativize file_path before git_uri() so an absolute path doesn't double the root"
+[expected_suggestion]
+fingerprint = "No files found that match the pattern \"git:///...doubled.../source.sql@HEAD\""
+points_at   = "sql/source.sql (read_source_text git branch)"

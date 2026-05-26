@@ -45,16 +45,10 @@ def reset_fixture(scenario: dict, cfg: CalibrationConfig, work: Path) -> Path:
     return work
 
 
-def score(scenario: dict, fixture: Path, env: dict[str, str]) -> tuple[bool, str]:
-    """Run the scenario's check.py against the fixture; returns (passed, detail)."""
-    import os
-    proc = subprocess.run([sys.executable, str(scenario["dir"] / "check.py"), str(fixture)],
-                          capture_output=True, text=True, env={**os.environ, **env})
-    try:
-        res = json.loads(proc.stdout.strip().splitlines()[-1])
-        return bool(res.get("passed")), res.get("detail", "")
-    except Exception:
-        return False, f"check.py error: {proc.stderr[-300:] or proc.stdout[-300:]}"
+def score(scenario: dict, fixture: Path, env: dict[str, str]) -> tuple[bool, str, dict]:
+    """Run the scenario's declarative check against the fixture (checks.run_check)."""
+    import checks
+    return checks.run_check(scenario["dir"], fixture, env)
 
 
 def run_agent(scenario: dict, fixture: Path, cfg: CalibrationConfig, rec: RunRecord) -> None:
@@ -68,22 +62,59 @@ def run_agent(scenario: dict, fixture: Path, cfg: CalibrationConfig, rec: RunRec
 
 
 def run_one(sid: str, cfg: CalibrationConfig, run_idx: int) -> RunRecord:
+    import checks
     scenario = load_scenario(cfg.corpus_dir, sid)
-    work = cfg.out_dir / "_work" / f"{sid}.{cfg.label()}.{run_idx}"
     rec = RunRecord(scenario=sid, integrations=cfg.label().split(".")[-1], run=run_idx)
+    spec = checks.load_check(scenario["dir"])
+    if spec.get("type") == "pending":
+        rec.detail = f"PENDING -- blocked on {spec.get('blocked_on', '?')}"
+        return rec
+    work = cfg.out_dir / "_work" / f"{sid}.{cfg.label()}.{run_idx}"
     t0 = time.time()
     fixture = reset_fixture(scenario, cfg, work)
     env = env_for(cfg.integrations, fixture)          # raises if an ON toggle isn't built yet
     run_agent(scenario, fixture, cfg, rec)
-    rec.passed, rec.detail = score(scenario, fixture, env)
+    rec.passed, rec.detail, extra = score(scenario, fixture, env)
+    if extra.get("latency_ms") is not None:
+        rec.tool_latencies_ms.append(extra["latency_ms"])
     rec.walltime_s = round(time.time() - t0, 2)
     return rec
 
 
+def run_all(cfg: CalibrationConfig) -> Path:
+    """Run every scenario x n_runs under the current integration set; write one jsonl.
+    Pending checks (workstream not built) are recorded, not skipped, so the corpus
+    coverage is visible. Returns the results path."""
+    from metrics import write_records
+    records = []
+    for sid in cfg.scenarios:
+        for i in range(cfg.n_runs):
+            try:
+                records.append(run_one(sid, cfg, i))
+            except NotImplementedError as e:
+                rec = RunRecord(scenario=sid, integrations=cfg.label().split(".")[-1], run=i)
+                rec.detail = f"toggle-not-built: {e}"
+                records.append(rec)
+    out = cfg.out_dir / f"{cfg.label()}.jsonl"
+    write_records(records, out)
+    return out
+
+
 if __name__ == "__main__":
-    # smoke: one OFF/proxy run of each scenario named on argv (defaults to S01)
-    ids = sys.argv[1:] or ["S01_toolinfo_subscript"]
-    cfg = CalibrationConfig(scenarios=ids)
-    for sid in ids:
-        r = run_one(sid, cfg, 0)
-        print(json.dumps({"scenario": r.scenario, "passed": r.passed, "walltime_s": r.walltime_s, "detail": r.detail[:160]}))
+    args = sys.argv[1:]
+    if args and args[0] == "--all":
+        # OFF/proxy baseline over the whole corpus (the calibration run)
+        n = int(args[1]) if len(args) > 1 else 5
+        cfg = CalibrationConfig(scenarios=[], n_runs=n)
+        cfg.scenarios = sorted(d.name for d in cfg.corpus_dir.iterdir()
+                               if d.is_dir() and not d.name.startswith(("_", ".")))
+        out = run_all(cfg)
+        print(f"wrote {out}  ({len(cfg.scenarios)} scenarios x {n} runs)")
+    else:
+        # smoke: one OFF/proxy run of each scenario named on argv (defaults to S01)
+        ids = args or ["S01_toolinfo_subscript"]
+        cfg = CalibrationConfig(scenarios=ids)
+        for sid in ids:
+            r = run_one(sid, cfg, 0)
+            print(json.dumps({"scenario": r.scenario, "passed": r.passed,
+                              "walltime_s": r.walltime_s, "detail": r.detail[:160]}))

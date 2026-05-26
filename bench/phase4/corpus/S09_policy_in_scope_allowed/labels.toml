@@ -1,0 +1,4 @@
+id = "S09_policy_in_scope_allowed"
+archetype = "policy-conformance"
+feeds = ["B"]
+expected_verdict = "allow"

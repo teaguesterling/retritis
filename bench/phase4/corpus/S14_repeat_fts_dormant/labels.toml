@@ -1,0 +1,4 @@
+id = "S14_repeat_fts_dormant"
+archetype = "repeat-failure"
+feeds = ["A"]
+seed_from = "S05_squackit_fts_dormant"

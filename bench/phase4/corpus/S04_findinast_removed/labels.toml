@@ -1,0 +1,9 @@
+id = "S04_findinast_removed"
+archetype = "stale-test"
+feeds = ["A"]
+[fix]
+file = "tests/test_mcp_server.py"
+summary = "FindInAST tool removed; retarget TestFindInAST -> TestFindCode with CSS selectors"
+[expected_suggestion]
+fingerprint = "Tool FindInAST error: Tool not found: FindInAST"
+points_at   = "tests/test_mcp_server.py (TestFindInAST)"

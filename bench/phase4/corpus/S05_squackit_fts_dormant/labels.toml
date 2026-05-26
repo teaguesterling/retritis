@@ -1,0 +1,3 @@
+id = "S05_squackit_fts_dormant"
+archetype = "dormant-feature"
+feeds = ["C", "A"]

@@ -1,0 +1,4 @@
+id = "S11_tool_under_cap_allowed"
+archetype = "policy-conformance"
+feeds = ["B"]
+expected_verdict = "allow"

@@ -1,0 +1,4 @@
+id = "S07_fts_build_cost"
+archetype = "index-build-cost"
+feeds = ["C"]
+metric = "latency_ms (cold connect + rebuild_fts)"

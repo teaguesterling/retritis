@@ -1,0 +1,3 @@
+type = "pending"
+blocked_on = "B"
+expected_verdict = "allow"

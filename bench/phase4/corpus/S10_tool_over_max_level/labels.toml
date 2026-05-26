@@ -1,0 +1,4 @@
+id = "S10_tool_over_max_level"
+archetype = "policy-conformance"
+feeds = ["B"]
+expected_verdict = "deny"

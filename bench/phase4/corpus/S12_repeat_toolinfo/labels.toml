@@ -1,0 +1,4 @@
+id = "S12_repeat_toolinfo"
+archetype = "repeat-failure"
+feeds = ["A"]
+seed_from = "S01_toolinfo_subscript"

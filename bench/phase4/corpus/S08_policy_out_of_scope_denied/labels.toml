@@ -1,0 +1,4 @@
+id = "S08_policy_out_of_scope_denied"
+archetype = "policy-conformance"
+feeds = ["B"]
+expected_verdict = "deny"

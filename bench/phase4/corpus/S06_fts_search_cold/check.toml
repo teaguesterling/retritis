@@ -1,0 +1,4 @@
+type = "script"
+script = "cnav_helpers.py"
+args = ["search"]
+expect = "pass"

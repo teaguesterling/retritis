@@ -1,0 +1,4 @@
+id = "S06_fts_search_cold"
+archetype = "index-build-cost"
+feeds = ["C"]
+metric = "latency_ms (cold connect + rebuild_fts + search)"

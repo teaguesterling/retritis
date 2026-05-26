@@ -1,0 +1,6 @@
+# S01 success: the fresh-server pro test (the code path the ToolInfo bug errors on).
+# Isolated via PYTHONPATH=<fixture> so the fixture's fledgling is tested, not the
+# editable install (validated: buggy 5a91178 fails, fixed tree passes).
+type = "pytest"
+target = "tests/test_pro_resources.py::TestResourcesWorkWithoutToolCalls::test_fresh_server_resources"
+expect = "pass"
