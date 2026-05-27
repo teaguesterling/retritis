@@ -193,7 +193,7 @@ it is a **generalized cross-taxon contextual cascade**:
   (`[path*="src/"]`, `^=`, `$=`) are exactly Plan-9-plumber's `data matches` and goo's
   `valid_when` jq-predicate — in CSS form. Specificity is the cascade's weighting.
 
-**Consequence:** "umwelt as the single runtime rule system" needs **~zero engine change** —
+**Consequence:** umwelt as the (opt-in) rule system needs **~zero engine change** —
 only (a) *vocabulary*: register the `event`/`state`/etc. taxa and define **property
 families** (enforce reads `allow`/`max-level`; coach reads `coach`/`suggest`/`doc`), and
 (b) *plumbing*: kibitzer's tie-in points pass the **full active context** (event + mode +
@@ -269,3 +269,88 @@ context**, not by enumerating combined tools. That is the suite's composite iden
   taxa/property vocabulary (`event`, `state`, `coach`/`suggest` names) and whether to adopt a
   goo-style *address* for events/rules; the riggs→umwelt emission format + how promotion
   writes into a live cascade; contract/versioning for each new boundary.
+
+---
+
+# Addendum B — umwelt is opt-in; goo defines the world; shape vs context
+
+Two corrections/clarifications from discussion (supersede any "single runtime rule system"
+phrasing above).
+
+## The distinction that organizes everything: shape-driven vs context-driven
+
+> **goo is shape-driven — "can *this* fit into *that*?"**
+> **umwelt is context-driven — "what constraints are on *that* when it's over *here*?"**
+
+goo answers **applicability/fit**: does this entity's *shape* (its type/MIME, an
+instrument's `accepts→emits`, a destination's `{write}`) match the slot it's going into? It
+is structural and mostly static — type-match + `valid_when`, no notion of "where in the
+session am I."
+
+umwelt answers **contextual constraint**: given that a thing exists and fits, what rules
+apply to it *in this context* (mode, event, session, location) — *with override semantics*
+(cascade + specificity)? It is dynamic and layered — the part goo's flat predicates do
+poorly.
+
+Applicability vs policy. Fit vs constraint. Keeping these on different tools keeps both
+identities sharp — and is the rule that prevents the redundant-matching trap below.
+
+## umwelt is 100 % opt-in, via mutual plugins (it does not pre-enumerate)
+
+umwelt is powerful but complicated, so **nothing depends on it by default.** A consumer
+that wants it performs a **mutual registration**:
+
+- the consumer supplies the **world** — `register_matcher` (per-taxon: what entities exist
+  + how to resolve them; `MatcherProtocol`), `register_entity`, optional `register_sugar`
+  (consumer-defined at-rules), and a pluggable compiler for its enforcement target;
+- umwelt supplies **resolution** — `resolve(entity, property, active-context)` over the
+  cascade.
+
+umwelt **does not pre-enumerate the world** — it asks the registered matchers, and
+**degrades gracefully** when none are registered (raw rule scan / synthetic entities, as in
+offline/test use). Every consumer therefore keeps a **no-umwelt path** (kibitzer's
+`PolicyConsumer.from_db → None → config fallback` is the reference). The complexity stays
+behind the opt-in boundary; the "what's in the world" knowledge lives with the consumer
+that actually has it.
+
+Restate the earlier claim accordingly: umwelt is **the rule system *when opted in*, and
+zero footprint when absent** — not a mandatory single dependency.
+
+## goo and umwelt: cousins; goo defines the world more than it consumes
+
+goo and umwelt are architectural **cousins** — both plugin-fed resolvers over a typed
+entity space (goo: domains/MIME/`valid_when`; umwelt: taxa/predicates/cascade). That
+overlap is a **trap**: goo already does applicability matching, so leaning on umwelt for it
+would mean *two* matching engines and muddied identities. The shape-vs-context split is the
+discipline that avoids it.
+
+**Division of labor.**
+- **goo owns** addressing, **applicability** (shape/fit), dispatch, composition. No umwelt
+  needed for the common case.
+- **umwelt owns** **contextual policy with override semantics** (cascade/specificity,
+  mode/event-scoped). The cases goo's flat `valid_when` handles poorly.
+
+**The relationship (weighted toward "defines").**
+1. **goo *defines* the umwelt world — the primary, natural tie.** goo's domains/entities/
+   MIME-types are exactly the rich, live, addressable entity space umwelt wants but won't
+   pre-enumerate. goo registering a matcher that resolves its addresses into umwelt entities
+   (and its types as taxa/classes) *is* the `register_matcher`/`register_entity` seam. goo is
+   plausibly the best world-provider umwelt could have.
+2. **goo *uses* umwelt — real but minority.** Only when goo needs **cascading contextual
+   policy** ("deny `REBOOT` in a locked-down session"; "destructive *in review mode*") does
+   it consult umwelt. For flat needs ("this verb is destructive → confirm"), goo's own verb
+   metadata suffices; umwelt would be overkill.
+
+These are **two halves of one opt-in act**: goo opting into umwelt *means* it registers its
+world (half 1) and can then query rules over it (half 2).
+
+**Dependency direction (clean):** **goo → umwelt** (goo registers/queries); **umwelt never
+reaches into goo.** umwelt stays standalone and goo-agnostic; if goo never opts in, umwelt
+never hears of it. Same shape as kibitzer→umwelt and lackpy→umwelt — they are all mutual-
+plugin consumers, differing only in how much world they contribute vs how much policy they
+query.
+
+**Recommendation:** treat goo as a **world-definer first** (its entity/type registry is
+premium umwelt material) and an umwelt *consumer* only where it needs context-scoped,
+overriding policy. goo = shape/fit/dispatch; umwelt = contextual constraint. Don't duplicate
+matching across them.
