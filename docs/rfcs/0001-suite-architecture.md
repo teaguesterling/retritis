@@ -354,3 +354,32 @@ query.
 premium umwelt material) and an umwelt *consumer* only where it needs context-scoped,
 overriding policy. goo = shape/fit/dispatch; umwelt = contextual constraint. Don't duplicate
 matching across them.
+
+---
+
+# Addendum C — Aspiration: a flat verb vocabulary (unqualified tool names)
+
+**Wish:** call `find_definitions …`, not `squackit.find_definitions` (let alone
+`mcp__plugin_squackit_squackit__find_definitions`). The verb should be flat; *which tool
+implements it* should be resolution, not qualification.
+
+This is goo's principle applied to the suite's surface: **"a verb is an abstract operation;
+instruments implement it"** and **addresses group by kind, not provider** — the provider is
+*resolved*, never named. `find_definitions` is one verb; fledgling and squackit are
+instruments that provide it, selected the way goo selects a `Using:` channel.
+
+- **Obstacle.** MCP namespaces tools *by server*, and the suite has genuine collisions (the
+  same verb in fledgling *and* squackit). A flat vocabulary therefore needs a thin
+  **dispatch facade** that owns one verb namespace and resolves the implementing tool by
+  **applicability** — collisions broken by capability/specificity (umwelt's and goo's
+  existing resolution), not by a server prefix.
+- **Mechanism (free, from cosmic-goo).** goo's `OPTIONS` slot-schema *is* an MCP
+  `inputSchema` — so a flat-verb ↔ MCP proxy is mechanical: the facade publishes unqualified
+  verbs, each backed by a resolved instrument's schema, and routes the call.
+- **Shape vs context applies.** Resolving *which instrument* answers a verb is **shape-driven**
+  (does this tool's `accepts` fit the subject?); gating *whether it's allowed here* is
+  **context-driven** (umwelt). The facade does the former; umwelt the latter.
+
+Open: where the facade lives (a suite-level MCP gateway? squackit-as-front-door?), and the
+collision-resolution policy (prefer the higher-level tool — squackit over fledgling — by
+default, overridable).
