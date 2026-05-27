@@ -1,0 +1,4 @@
+results/*.duckdb
+results/*.duckdb.wal
+results/_*.json
+results/_*.txt
