@@ -31,6 +31,8 @@ import itertools
 import os
 from pathlib import Path
 
+import pytest
+
 _HERE = Path(__file__).parent
 WORLD = _HERE / "world.yml"
 STYLESHEET = _HERE / "policy.umw"
@@ -181,6 +183,15 @@ def _policy_db(tmp_path):
     return build_policy_db(tmp_path / "policy.db")
 
 
+@pytest.mark.xfail(
+    strict=True,
+    reason="OPEN DESIGN DECISION (see README + session note): lackpy's UmweltPolicySource "
+    "is mode-blind (PolicyContext has no mode) and resolves the tool set with no context, "
+    "so mode-gated allow:false rules compete and it over-restricts Edit/Write/Bash in EVERY "
+    "mode. truth+kibitzer (mode-aware) allow them. This gate goes green once the convention "
+    "is chosen (A collapse / B unscoped-baseline / C thread mode). strict=True => XPASS "
+    "fails the suite, flagging that the decision has landed and the xfail should be removed.",
+)
 def test_tool_allow_three_way(tmp_path):
     """THE gate: truth == kibitzer == lackpy on every unscoped tool allow verdict."""
     db = _policy_db(tmp_path)
@@ -196,6 +207,15 @@ def test_tool_allow_three_way(tmp_path):
     assert not divergences, f"{len(divergences)} tool-allow divergence(s) (gate=0): {divergences}"
 
 
+@pytest.mark.xfail(
+    strict=True,
+    reason="OPEN DESIGN DECISION (see README + session note): lackpy's UmweltPolicySource "
+    "is mode-blind (PolicyContext has no mode) and resolves the tool set with no context, "
+    "so mode-gated allow:false rules compete and it over-restricts Edit/Write/Bash in EVERY "
+    "mode. truth+kibitzer (mode-aware) allow them. This gate goes green once the convention "
+    "is chosen (A collapse / B unscoped-baseline / C thread mode). strict=True => XPASS "
+    "fails the suite, flagging that the decision has landed and the xfail should be removed.",
+)
 def test_constraints_three_way(tmp_path):
     """truth == kibitzer == lackpy on (max-level, allow-patterns, deny-patterns)."""
     db = _policy_db(tmp_path)
@@ -248,6 +268,24 @@ def test_lackpy_is_mode_unaware(tmp_path):
         "lackpy PolicyContext now has a mode field — extend the three-way conformance to "
         "cover mode-scoped verdicts for lackpy too (this finding is resolved)."
     )
+
+
+def test_lackpy_over_restricts_mode_gated_tools(tmp_path):
+    """RECORDED FINDING (passes by documenting reality): because lackpy is mode-blind
+    and collapses all modes, it DENIES every mode-gated tool (Edit/Write/Bash here)
+    that the mode-aware readers ALLOW — in all three modes, including implement where
+    they should plainly be usable. This is the substantive divergence workstream B
+    surfaced; it breaks (alerting a behavior change) if lackpy stops over-restricting."""
+    db = _policy_db(tmp_path)
+    over_restricted = [t for t in ("Edit", "Write", "Bash") if lackpy_tool_allow(db, t) == "deny"]
+    assert over_restricted == ["Edit", "Write", "Bash"], (
+        "lackpy no longer collapse-denies these mode-gated tools — the design decision "
+        f"likely landed; revisit the xfail'd three-way gates. Got: {over_restricted}"
+    )
+    # ...while the mode-aware readers allow them in implement mode:
+    for t in ("Edit", "Write", "Bash"):
+        assert truth_tool_allow(db, t, mode="implement") == "allow"
+        assert kibitzer_tool_allow(db, t, mode="implement") == "allow"
 
 
 if __name__ == "__main__":
