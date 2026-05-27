@@ -54,29 +54,40 @@ def score(scenario: dict, fixture: Path, env: dict[str, str]) -> tuple[bool, str
 def run_agent(scenario: dict, fixture: Path, cfg: CalibrationConfig, rec: RunRecord) -> None:
     """OFF/baseline: in proxy mode we do not drive an agent; we measure the fixture
     as-is (a buggy fixture fails its check -> the baseline 'cost' of the unaided state).
-    FULL mode (TODO) drives a real agent on goal.md and captures turns/tokens/walltime
-    + the kibitzer/blq trace."""
+
+    FULL mode drives a real agent on goal.md and captures turns/tokens/walltime + the
+    kibitzer/blq trace. **The `claude -p --output-format json` one-shot driver below is
+    deprecated** — smoked 2026-05-26: it returns no usable JSON / doesn't complete the
+    fix (Claude Code changed `-p`'s contract; it's no longer the headless one-shot the
+    A/B needs). The full-agent runner is to be rebuilt on the **Claude Agent SDK**
+    (programmatic loop with structured turn/token/trace capture), which is the real
+    remaining workstream that unblocks A's T3 and C's S16. Until then full mode raises."""
     if cfg.runner_mode != "full":
         return  # proxy: score() reflects the fixture as-is
-    import shutil, json as _json
-    if not shutil.which("claude"):
-        raise NotImplementedError("full mode needs the `claude` CLI on PATH")
-    prompt = (scenario["goal"].strip() +
-              "\n\nFix the issue in THIS repository so the relevant tests pass. "
-              "Edit files directly; do not ask for confirmation.")
-    cmd = ["claude", "-p", prompt, "--output-format", "json",
-           "--permission-mode", "acceptEdits", "--max-budget-usd", str(cfg.max_budget_usd)]
-    t0 = time.time()
-    proc = subprocess.run(cmd, cwd=str(fixture), capture_output=True, text=True, timeout=cfg.agent_timeout_s)
-    rec.walltime_s = round(time.time() - t0, 2)
-    try:
-        data = _json.loads(proc.stdout)
-        rec.turns = data.get("num_turns")
-        u = data.get("usage") or {}
-        rec.tokens = (u.get("input_tokens") or 0) + (u.get("output_tokens") or 0)
-        rec.detail = str(data.get("subtype") or data.get("result", ""))[:120]
-    except Exception:
-        rec.detail = f"agent-json-parse-failed: {(proc.stdout or proc.stderr)[-140:]}"
+    raise NotImplementedError(
+        "full mode: the `claude -p` driver is deprecated (no usable headless output as of "
+        "2026-05); rebuild on the Claude Agent SDK before running the agent-driven A/B"
+    )
+    # --- deprecated `claude -p` driver (kept for reference; do not re-enable as-is) ---
+    # import shutil, json as _json
+    # if not shutil.which("claude"):
+    #     raise NotImplementedError("full mode needs the `claude` CLI on PATH")
+    # prompt = (scenario["goal"].strip() +
+    #           "\n\nFix the issue in THIS repository so the relevant tests pass. "
+    #           "Edit files directly; do not ask for confirmation.")
+    # cmd = ["claude", "-p", prompt, "--output-format", "json",
+    #        "--permission-mode", "acceptEdits", "--max-budget-usd", str(cfg.max_budget_usd)]
+    # t0 = time.time()
+    # proc = subprocess.run(cmd, cwd=str(fixture), capture_output=True, text=True, timeout=cfg.agent_timeout_s)
+    # rec.walltime_s = round(time.time() - t0, 2)
+    # try:
+    #     data = _json.loads(proc.stdout)
+    #     rec.turns = data.get("num_turns")
+    #     u = data.get("usage") or {}
+    #     rec.tokens = (u.get("input_tokens") or 0) + (u.get("output_tokens") or 0)
+    #     rec.detail = str(data.get("subtype") or data.get("result", ""))[:120]
+    # except Exception:
+    #     rec.detail = f"agent-json-parse-failed: {(proc.stdout or proc.stderr)[-140:]}"
 
 
 def run_one(sid: str, cfg: CalibrationConfig, run_idx: int) -> RunRecord:
