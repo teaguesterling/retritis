@@ -45,32 +45,34 @@ compiled policy. → `KeyError: 'id'`. The fix migrates the source to the real s
 Run: `python -m pytest policy_agreement.py -q`  (or `python policy_agreement.py` for a
 `gen_cases` demo).
 
-## Current status — the substantive B finding (open decision)
+## The B finding — surfaced, then resolved (option C)
 
-After fixing lackpy's shape bug, the harness surfaced a deeper divergence that is a
-**design decision, not a bug to silently fix**:
+Fixing lackpy's shape bug exposed a deeper divergence: lackpy's `UmweltPolicySource`
+was **mode-blind** — `PolicyContext` had no `mode`, and the source resolved the tool set
+with no context, so mode-gated `allow:false` rules competed and lackpy **denied
+Edit/Write/Bash in every mode** (incl. `implement`), while truth + kibitzer allowed them.
+That was a design decision, not a silent fix, so it was surfaced. Teague chose **C —
+thread the active mode through `PolicyContext`** (the architecturally correct option).
 
-> lackpy's `UmweltPolicySource` is **mode-blind** (`PolicyContext` has no `mode`) and
-> resolves the tool set via `resolve_all(type="tool")` with **no context**. In that
-> mode, all mode-gated rules compete in the cascade — so `mode#review tool{allow:false}`
-> applies even when review isn't active. Result: lackpy **denies Edit/Write/Bash in
-> every mode**, including `implement`, where the mode-aware readers (truth + kibitzer)
-> allow them. lackpy over-restricts every active mode.
+Implemented in lackpy `main`:
+- `PolicyContext` gains a `mode` field.
+- `UmweltPolicySource.resolve` reads `context.get("mode")` and threads it into
+  `resolve_all(type="tool", context={"mode": mode})`; with no mode it passes an empty
+  context = the **unscoped baseline** (rather than letting every mode's rules compete).
+- `service.py` populates `policy_context["mode"]` from the kibitzer session's active
+  `.mode`, so generation resolves the policy for the mode the agent is actually in.
 
-`test_lackpy_over_restricts_mode_gated_tools` asserts this reality (green today); the
-three-way gates (`test_tool_allow_three_way`, `test_constraints_three_way`) are
-`xfail(strict=True)` — they flip to a hard failure (XPASS) once the divergence closes,
-forcing the xfail to be removed when the decision lands.
+Result: lackpy is now in the **three-way gate across every mode**. All tests pass, no
+xfails:
+- `test_tool_allow_three_way` / `test_constraints_three_way` — truth == kibitzer ==
+  lackpy on every (mode, tool) allow verdict + constraints (incl. Bash's max-level
+  tightening to 3 in implement).
+- `test_mode_policy_kibitzer_vs_truth` — ModePolicy (writable/strategy/coaching) matches.
+- `test_lackpy_is_mode_aware` — regression guard: the `mode` field must stay, and lackpy
+  must allow Edit/Write/Bash in implement (so the mode-blind bug can't silently return).
 
-The kibitzer↔truth tiers (`test_mode_scoped_tool_allow_kibitzer_vs_truth`,
-`test_mode_policy_kibitzer_vs_truth`) pass — those two readers agree everywhere.
-
-### The decision (for Teague)
-- **A. Collapse (status quo):** most-restrictive intersection across modes. Over-strips
-  capability in permissive modes (today's behavior).
-- **B. Unscoped baseline (`resolve_all(type="tool", context={})`):** lackpy reads the
-  default/no-mode policy → kibitzer-aligned at no-mode. Minimal change, but lackpy still
-  can't see the active mode, so it under-restricts in restrictive modes (program kits a
-  tool, kibitzer denies at call time — "layered enforcement," or a footgun).
-- **C. Thread mode through `PolicyContext`:** architecturally correct; a real lackpy
-  refactor that brings lackpy into the three-way gate for mode-scoped verdicts too.
+> Aside (out of scope): lackpy's *broader* test suite is ~164-failing against the
+> installed kibitzer (e.g. `KibitzerPolicySource` calls `KibitzerSession.has_coaching()`,
+> which the installed kibitzer no longer exposes). That's the same drift class B targets,
+> on the kibitzer-*hints* source rather than the umwelt-*policy* source — a separate
+> follow-up.

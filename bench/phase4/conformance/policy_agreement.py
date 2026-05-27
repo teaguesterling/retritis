@@ -112,13 +112,14 @@ def truth_tool_allow(db, tool, mode=None) -> str:
     return _allow_verdict(_engine(db).resolve(type="tool", id=tool, property="allow", context=ctx))
 
 
-def truth_constraints(db, tool):
-    props = _engine(db).resolve(type="tool", id=tool) or {}
+def truth_constraints(db, tool, mode=None):
+    ctx = {"mode": mode} if mode else {}
+    props = _engine(db).resolve(type="tool", id=tool, context=ctx) or {}
     return _norm_constraints(props.get("max-level"), props.get("allow-patterns"), props.get("deny-patterns"))
 
 
 def truth_mode_policy(db, mode):
-    props = _engine(db).resolve(type="mode", id=mode) or {}
+    props = _engine(db).resolve(type="mode", id=mode, context={}) or {}
     return (_split(props.get("writable")), props.get("strategy", ""), _int_or_none(props.get("coaching-frequency")))
 
 
@@ -133,8 +134,8 @@ def kibitzer_tool_allow(db, tool, mode=None) -> str:
     return _allow_verdict(_kib(db).get_tool_policy(tool, active_mode=mode).get("allow"))
 
 
-def kibitzer_constraints(db, tool):
-    tp = _kib(db).get_tool_policy(tool)
+def kibitzer_constraints(db, tool, mode=None):
+    tp = _kib(db).get_tool_policy(tool, active_mode=mode)
     return _norm_constraints(tp.get("max-level"), tp.get("allow-patterns"), tp.get("deny-patterns"))
 
 
@@ -152,23 +153,25 @@ def _lackpy_source(db):
     return UmweltPolicySource(_engine(db))
 
 
-def _lackpy_result(db):
+def _lackpy_result(db, mode=None):
     """Run lackpy's source over a kit that already contains every tool, so its
-    intersection-with-kit step never masks a verdict. Returns the PolicyResult."""
+    intersection-with-kit step never masks a verdict. Threads the active mode through
+    PolicyContext (workstream-B option C), exactly as service.py now does."""
     from lackpy.policy.types import PolicyResult
 
     src = _lackpy_source(db)
     current = PolicyResult(allowed_tools=frozenset(TOOLS))
-    return src.resolve(current, {})
+    context = {"mode": mode} if mode else {}
+    return src.resolve(current, context)
 
 
-def lackpy_tool_allow(db, tool) -> str:
-    res = _lackpy_result(db)
+def lackpy_tool_allow(db, tool, mode=None) -> str:
+    res = _lackpy_result(db, mode)
     return "deny" if tool in res.denied_tools or tool not in res.allowed_tools else "allow"
 
 
-def lackpy_constraints(db, tool):
-    res = _lackpy_result(db)
+def lackpy_constraints(db, tool, mode=None):
+    res = _lackpy_result(db, mode)
     tc = res.tool_constraints.get(tool)
     if tc is None:
         return (None, (), ())
@@ -183,64 +186,43 @@ def _policy_db(tmp_path):
     return build_policy_db(tmp_path / "policy.db")
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="OPEN DESIGN DECISION (see README + session note): lackpy's UmweltPolicySource "
-    "is mode-blind (PolicyContext has no mode) and resolves the tool set with no context, "
-    "so mode-gated allow:false rules compete and it over-restricts Edit/Write/Bash in EVERY "
-    "mode. truth+kibitzer (mode-aware) allow them. This gate goes green once the convention "
-    "is chosen (A collapse / B unscoped-baseline / C thread mode). strict=True => XPASS "
-    "fails the suite, flagging that the decision has landed and the xfail should be removed.",
-)
+# "No active mode" means the unscoped baseline: all three readers pass an empty context
+# (mode=None), so mode-scoped rules don't compete. With an active mode they pass
+# {"mode": m}. This is the convention lackpy adopted in workstream-B option C.
+_ALL_MODES = [None, *MODES]
+
+
 def test_tool_allow_three_way(tmp_path):
-    """THE gate: truth == kibitzer == lackpy on every unscoped tool allow verdict."""
+    """THE gate: truth == kibitzer == lackpy on every (mode, tool) allow verdict —
+    including each active mode now that lackpy threads mode through PolicyContext."""
     db = _policy_db(tmp_path)
     divergences = []
-    for tool in TOOLS:
+    for mode, tool in itertools.product(_ALL_MODES, TOOLS):
         verdicts = {
-            "truth": truth_tool_allow(db, tool),
-            "kibitzer": kibitzer_tool_allow(db, tool),
-            "lackpy": lackpy_tool_allow(db, tool),
+            "truth": truth_tool_allow(db, tool, mode=mode),
+            "kibitzer": kibitzer_tool_allow(db, tool, mode=mode),
+            "lackpy": lackpy_tool_allow(db, tool, mode=mode),
         }
         if len(set(verdicts.values())) != 1:
-            divergences.append((tool, verdicts))
+            divergences.append((mode, tool, verdicts))
     assert not divergences, f"{len(divergences)} tool-allow divergence(s) (gate=0): {divergences}"
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="OPEN DESIGN DECISION (see README + session note): lackpy's UmweltPolicySource "
-    "is mode-blind (PolicyContext has no mode) and resolves the tool set with no context, "
-    "so mode-gated allow:false rules compete and it over-restricts Edit/Write/Bash in EVERY "
-    "mode. truth+kibitzer (mode-aware) allow them. This gate goes green once the convention "
-    "is chosen (A collapse / B unscoped-baseline / C thread mode). strict=True => XPASS "
-    "fails the suite, flagging that the decision has landed and the xfail should be removed.",
-)
 def test_constraints_three_way(tmp_path):
-    """truth == kibitzer == lackpy on (max-level, allow-patterns, deny-patterns)."""
+    """truth == kibitzer == lackpy on (max-level, allow-patterns, deny-patterns) for
+    every (mode, tool) — e.g. Bash's max-level tightens to 3 in implement, and all three
+    must see that identically."""
     db = _policy_db(tmp_path)
     divergences = []
-    for tool in TOOLS:
+    for mode, tool in itertools.product(_ALL_MODES, TOOLS):
         verdicts = {
-            "truth": truth_constraints(db, tool),
-            "kibitzer": kibitzer_constraints(db, tool),
-            "lackpy": lackpy_constraints(db, tool),
+            "truth": truth_constraints(db, tool, mode=mode),
+            "kibitzer": kibitzer_constraints(db, tool, mode=mode),
+            "lackpy": lackpy_constraints(db, tool, mode=mode),
         }
         if len(set(verdicts.values())) != 1:
-            divergences.append((tool, verdicts))
+            divergences.append((mode, tool, verdicts))
     assert not divergences, f"{len(divergences)} constraint divergence(s) (gate=0): {divergences}"
-
-
-def test_mode_scoped_tool_allow_kibitzer_vs_truth(tmp_path):
-    """The two mode-aware readers agree on every (mode, tool) allow verdict."""
-    db = _policy_db(tmp_path)
-    divergences = []
-    for mode, tool in itertools.product(MODES, TOOLS):
-        t = truth_tool_allow(db, tool, mode=mode)
-        k = kibitzer_tool_allow(db, tool, mode=mode)
-        if t != k:
-            divergences.append((mode, tool, {"truth": t, "kibitzer": k}))
-    assert not divergences, f"{len(divergences)} mode-scoped divergence(s) (gate=0): {divergences}"
 
 
 def test_mode_policy_kibitzer_vs_truth(tmp_path):
@@ -255,37 +237,23 @@ def test_mode_policy_kibitzer_vs_truth(tmp_path):
     assert not divergences, f"{len(divergences)} mode-policy divergence(s) (gate=0): {divergences}"
 
 
-def test_lackpy_is_mode_unaware(tmp_path):
-    """RECORDED FINDING (not a pass-by-accident): lackpy's UmweltPolicySource cannot
-    take an active mode — PolicyContext has no `mode` field and the source calls
-    resolve_all(type='tool') with no context. So mode-scoped policy (review/explore
-    locking tools down) is invisible to lackpy. This test documents the gap so a future
-    lackpy enhancement (thread mode through PolicyContext) has a target; until then the
-    three-way gate is correctly scoped to the unscoped verdict + constraints."""
+def test_lackpy_is_mode_aware(tmp_path):
+    """RESOLVED (workstream-B option C): lackpy now threads the active operating mode
+    through PolicyContext, so it no longer collapse-denies mode-gated tools. In implement
+    mode Edit/Write/Bash are allowed (matching truth+kibitzer); the earlier finding —
+    lackpy over-restricting every mode — is closed. Guards the regression both ways:
+    the mode field must exist AND lackpy must allow the tools in implement."""
     from lackpy.policy.types import PolicyContext
 
-    assert "mode" not in PolicyContext.__annotations__, (
-        "lackpy PolicyContext now has a mode field — extend the three-way conformance to "
-        "cover mode-scoped verdicts for lackpy too (this finding is resolved)."
+    assert "mode" in PolicyContext.__annotations__, (
+        "lackpy PolicyContext lost its `mode` field — mode-scoped policy is invisible "
+        "to lackpy again; it will over-restrict. Restore option C."
     )
-
-
-def test_lackpy_over_restricts_mode_gated_tools(tmp_path):
-    """RECORDED FINDING (passes by documenting reality): because lackpy is mode-blind
-    and collapses all modes, it DENIES every mode-gated tool (Edit/Write/Bash here)
-    that the mode-aware readers ALLOW — in all three modes, including implement where
-    they should plainly be usable. This is the substantive divergence workstream B
-    surfaced; it breaks (alerting a behavior change) if lackpy stops over-restricting."""
     db = _policy_db(tmp_path)
-    over_restricted = [t for t in ("Edit", "Write", "Bash") if lackpy_tool_allow(db, t) == "deny"]
-    assert over_restricted == ["Edit", "Write", "Bash"], (
-        "lackpy no longer collapse-denies these mode-gated tools — the design decision "
-        f"likely landed; revisit the xfail'd three-way gates. Got: {over_restricted}"
-    )
-    # ...while the mode-aware readers allow them in implement mode:
     for t in ("Edit", "Write", "Bash"):
-        assert truth_tool_allow(db, t, mode="implement") == "allow"
-        assert kibitzer_tool_allow(db, t, mode="implement") == "allow"
+        assert lackpy_tool_allow(db, t, mode="implement") == "allow", (
+            f"lackpy denies {t} in implement mode — mode-blind regression."
+        )
 
 
 if __name__ == "__main__":
