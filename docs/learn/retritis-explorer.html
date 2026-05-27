@@ -1,0 +1,227 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Retritis — Interactive Field Guide</title>
+<style>
+  :root{
+    --bg:#0d1117; --panel:#161b22; --panel2:#1c2330; --line:#2a3140;
+    --ink:#e6edf3; --dim:#9aa7b4; --faint:#6b7785;
+    --accent:#4dd0c0; --accent2:#7aa2ff; --warn:#e0a356; --bad:#e06b74; --good:#6bd49a;
+    --mono:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+    --sans:ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,sans-serif;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--sans);line-height:1.5}
+  a{color:var(--accent2);text-decoration:none}
+  .wrap{max-width:1040px;margin:0 auto;padding:0 20px}
+  header{padding:54px 0 30px;border-bottom:1px solid var(--line);
+    background:radial-gradient(1200px 380px at 80% -120px,rgba(77,208,192,.10),transparent)}
+  .kicker{font-family:var(--mono);font-size:12px;letter-spacing:.18em;text-transform:uppercase;color:var(--accent)}
+  h1{font-size:40px;margin:.18em 0 .1em;letter-spacing:-.02em}
+  .lede{font-size:19px;color:var(--dim);max-width:62ch}
+  .thesis{margin-top:18px;padding:14px 18px;border-left:3px solid var(--accent);
+    background:var(--panel);border-radius:0 8px 8px 0;font-size:17px}
+  .thesis b{color:var(--ink)}
+  nav{position:sticky;top:0;z-index:20;background:rgba(13,17,23,.86);backdrop-filter:blur(8px);
+    border-bottom:1px solid var(--line)}
+  nav .wrap{display:flex;gap:6px;flex-wrap:wrap;padding:10px 20px}
+  nav a{font-family:var(--mono);font-size:13px;color:var(--dim);padding:6px 11px;border-radius:7px}
+  nav a:hover{color:var(--ink);background:var(--panel)}
+  section{padding:48px 0;border-bottom:1px solid var(--line)}
+  h2{font-size:27px;margin:0 0 6px;letter-spacing:-.01em}
+  .sub{color:var(--dim);margin:0 0 26px;max-width:64ch}
+  .mono{font-family:var(--mono)}
+  /* reflex */
+  .reflex-head{display:flex;justify-content:space-between;align-items:center;gap:14px;flex-wrap:wrap;margin-bottom:18px}
+  .toggle{font-family:var(--mono);font-size:13px;color:var(--dim);cursor:pointer;user-select:none;
+    border:1px solid var(--line);padding:7px 13px;border-radius:8px;background:var(--panel)}
+  .toggle:hover{color:var(--ink);border-color:var(--accent)}
+  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:12px}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:11px;padding:15px 16px;cursor:pointer;
+    transition:border-color .15s,transform .08s}
+  .card:hover{border-color:var(--accent);transform:translateY(-1px)}
+  .card .bash{font-family:var(--mono);font-size:13.5px;color:var(--bad)}
+  .card .bash::before{content:"$ ";color:var(--faint)}
+  .card .ans{margin-top:10px;font-size:14px;display:none}
+  .card.show .ans{display:block;animation:fade .2s ease}
+  .card .tool{font-family:var(--mono);color:var(--good);font-weight:600}
+  .card .why{color:var(--dim);font-size:13px;margin-top:3px}
+  .card .hint{color:var(--faint);font-size:12px;font-family:var(--mono);margin-top:9px}
+  body.quiz .card .hint{display:block}
+  body:not(.quiz) .card .ans{display:block}
+  body:not(.quiz) .card .hint{display:none}
+  @keyframes fade{from{opacity:0;transform:translateY(-3px)}to{opacity:1}}
+  /* map */
+  .groups{display:flex;flex-direction:column;gap:22px}
+  .group h3{font-family:var(--mono);font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:var(--accent);margin:0 0 10px}
+  .tiles{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px}
+  .tile{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:13px 14px;cursor:pointer;transition:.15s}
+  .tile:hover,.tile.active{border-color:var(--accent);background:var(--panel2)}
+  .tile .nm{font-family:var(--mono);font-weight:600;color:var(--ink)}
+  .tile .tg{font-size:12.5px;color:var(--dim);margin-top:3px}
+  .detail{margin-top:18px;background:var(--panel2);border:1px solid var(--line);border-radius:12px;padding:20px 22px;min-height:120px}
+  .detail .dn{font-family:var(--mono);font-size:20px;color:var(--accent);font-weight:700}
+  .detail .id{font-size:16px;margin:8px 0 12px}
+  .detail .row{display:flex;gap:10px;margin:7px 0;font-size:14px}
+  .detail .lab{font-family:var(--mono);font-size:12px;color:var(--faint);min-width:78px;padding-top:2px;text-transform:uppercase;letter-spacing:.06em}
+  .detail code{font-family:var(--mono);font-size:12.5px;background:#0a0e14;border:1px solid var(--line);padding:1px 6px;border-radius:5px;color:var(--accent2)}
+  .detail .placeholder{color:var(--faint)}
+  /* loop */
+  .loop{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}
+  .step{background:var(--panel);border:1px solid var(--line);border-radius:11px;padding:15px;cursor:pointer;transition:.15s;text-align:center}
+  .step:hover,.step.active{border-color:var(--accent);background:var(--panel2)}
+  .step .v{font-family:var(--mono);font-size:15px;color:var(--accent);font-weight:700}
+  .step .q{font-size:12.5px;color:var(--dim);margin-top:5px}
+  .step .arrow{color:var(--faint)}
+  .loopdetail{margin-top:16px;background:var(--panel2);border:1px solid var(--line);border-radius:11px;padding:16px 20px;font-size:14.5px}
+  .loopdetail .tools{font-family:var(--mono);font-size:13px;color:var(--good);margin-top:8px}
+  /* models */
+  .models{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+  .model{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:20px 22px}
+  .model h4{margin:0 0 4px;font-size:18px}
+  .model .pair{display:flex;gap:14px;margin-top:14px}
+  .model .half{flex:1;background:var(--panel2);border:1px solid var(--line);border-radius:9px;padding:12px 14px}
+  .model .half .t{font-family:var(--mono);font-size:13px;font-weight:700}
+  .model .half .d{font-size:13px;color:var(--dim);margin-top:5px}
+  .a1{color:var(--accent)} .a2{color:var(--accent2)}
+  footer{padding:40px 0 70px;color:var(--faint);font-size:13.5px}
+  footer .mag{font-size:15px;color:var(--dim)}
+  @media(max-width:720px){.loop{grid-template-columns:1fr 1fr}.models{grid-template-columns:1fr}h1{font-size:32px}}
+</style>
+</head>
+<body class="quiz">
+<header><div class="wrap">
+  <div class="kicker">An agent's interactive field guide</div>
+  <h1>Retritis</h1>
+  <p class="lede">A suite of MCP tools that turns a codebase into queryable data and gives a coding agent typed, indexed, policy-aware tools — instead of <span class="mono">grep | sed | cat</span>.</p>
+  <div class="thesis">The one move: <b>the codebase is already a database — query it, don't re-derive it with a shell.</b> Every time you reach for <span class="mono">bash</span> to inspect, search, read, run, or commit — ask if a tool already knows the answer as data. Almost always, yes.</div>
+</div></header>
+<nav><div class="wrap">
+  <a href="#reflex">① The reflex</a><a href="#map">② The suite</a><a href="#loop">③ The loop</a><a href="#models">④ Mental models</a>
+</div></nav>
+
+<section id="reflex"><div class="wrap">
+  <div class="reflex-head">
+    <div><h2>① The reflex</h2><p class="sub" style="margin:0">Suppress the shell habit on the left; reach for the tool on the right. Tap a card to reveal.</p></div>
+    <div class="toggle" id="quizToggle">mode: test yourself ▸</div>
+  </div>
+  <div class="grid" id="reflexGrid"></div>
+</div></section>
+
+<section id="map"><div class="wrap">
+  <h2>② The suite</h2>
+  <p class="sub">Ten tools, one identity each. Tap one to see what it is and how it composes. Two ideas recur: <b>code as queryable data</b>, and <b>a DuckDB file is the contract between a producer and a consumer</b>.</p>
+  <div class="groups" id="groups"></div>
+  <div class="detail" id="detail"><div class="placeholder">Pick a tool above.</div></div>
+</div></section>
+
+<section id="loop"><div class="wrap">
+  <h2>③ The loop you're actually running</h2>
+  <p class="sub">Everything serves one cycle. Naming it keeps you tool-first. Tap a stage.</p>
+  <div class="loop" id="loop"></div>
+  <div class="loopdetail" id="loopDetail"><div class="placeholder">Pick a stage.</div></div>
+</div></section>
+
+<section id="models"><div class="wrap">
+  <h2>④ Two mental models</h2>
+  <p class="sub">The patterns that keep the abstract tools composable.</p>
+  <div class="models">
+    <div class="model">
+      <h4>Generators vs. runtimes</h4>
+      <p class="sub" style="margin:0;font-size:14px">A <b>generator</b> produces an artifact <i>offline</i>; a <b>runtime</b> consumes it <i>online</i>. Different trust models — don't fuse them.</p>
+      <div class="pair">
+        <div class="half"><div class="t a2">generator → artifact</div><div class="d"><span class="mono">agent-riggs → umwelt rules</span><br><span class="mono">lackpy-gen → program</span></div></div>
+        <div class="half"><div class="t a1">runtime consumes</div><div class="d"><span class="mono">umwelt</span> resolves rules<br><span class="mono">lackpy</span> runs the program</div></div>
+      </div>
+    </div>
+    <div class="model">
+      <h4>Shape-driven vs. context-driven</h4>
+      <p class="sub" style="margin:0;font-size:14px">The split that keeps applicability separate from policy.</p>
+      <div class="pair">
+        <div class="half"><div class="t a1">shape</div><div class="d"><b>“can this fit into that?”</b><br>type / structure / applicability. (e.g. an addressing layer like <span class="mono">goo</span>.)</div></div>
+        <div class="half"><div class="t a2">context</div><div class="d"><b>“what constraints are on that when it's over here?”</b><br>mode / event / session, with override. (<span class="mono">umwelt</span>.)</div></div>
+      </div>
+    </div>
+  </div>
+</div></section>
+
+<footer><div class="wrap">
+  <span class="mag">🐦 Cover animal: the magpie</span> — a corvid, the bird world's tool-user and compulsive cacher: the agent, and its memory. Built on a duck (DuckDB).<br>
+  Companion to the book in <span class="mono">docs/book/</span>; architecture direction in <span class="mono">docs/rfcs/0001</span>. This guide teaches the shipped suite.
+</div></footer>
+
+<script>
+const REFLEX=[
+ {bash:'grep -rn "connect"',tool:'squackit.search_code / find_names',why:'AST- and FTS-aware: ranked matches and real symbols, not substring lines.'},
+ {bash:'grep -rn "def connect"',tool:'squackit.find / fledgling.FindDefinitions',why:'Returns the definition — file, line, signature — not lines that mention it.'},
+ {bash:'# who calls this?',tool:'squackit.call_graph / investigate',why:'A symbol dossier: definition + callers + complexity in one call.'},
+ {bash:'cat file.py',tool:'squackit.read_source / fledgling.ReadLines',why:'Read the exact range a query pointed you at — not the whole file.'},
+ {bash:'find . -name "*.py"',tool:'squackit.list_files / explore',why:'The project as data; project_overview explains it without cat-ing anything.'},
+ {bash:'git diff',tool:'squackit.structural_diff',why:'What changed *structurally* (functions added/removed), not just lines.'},
+ {bash:'pytest | tail -20',tool:'blq.run("test") → blq.errors',why:"Don't pipe. Run, then query — the run persists and the next session can read it."},
+ {bash:'git add -A && git commit',tool:'jetsam.save → confirm',why:'Git as a plan you confirm — catches wrong-files/wrong-branch before it lands.'},
+ {bash:'grep TODO docs/',tool:'squackit.search_docs → read_doc_section',why:'Ranked doc search; read just the section, not the file.'},
+ {bash:'# which tool??',tool:'squackit.help / fledgling.Help / blq.commands',why:'Ask the tool. Each server documents its own surface.'},
+];
+const GROUPS=[
+ {name:'The engine — code as queryable data',tools:[
+   {nm:'fledgling',tg:'SQL macros over DuckDB',id:'The engine. Loads the AST (tree-sitter), git, docs and chat into DuckDB and exposes intelligence as a library of SQL macros + full-text search.',key:'connect() · macros · ensure_fts() · build_cache() (persistent)',comp:'squackit & pluckit query it; ships a public Connection contract (con/tools/ensure_fts).'},
+   {nm:'pluckit',tg:'CSS-over-AST',id:'A CSS-like selector language over the AST — pick code nodes the way a stylesheet picks DOM elements. The ergonomic structural layer.',key:'Plucker · selectors · pluckins · Chain.MUTATION_OPS',comp:"squackit's structural queries run on it; proxies fledgling's Connection."},
+   {nm:'squackit',tg:'the code-intel server',id:'The MCP server you actually call. Composes fledgling + pluckit into ~40 tools: search, navigate, read, structural diff, recall sessions.',key:'search_code · find · investigate · read_source · structural_diff · sessions',comp:'Consumes fledgling/pluckit by versioned public contract — a refactor no longer shatters it.'},
+ ]},
+ {name:'The workflow loop',tools:[
+   {nm:'blq',tg:'build-log query',id:"Runs builds/tests and captures the output as queryable data (.bird). Don't pipe — run, then query.",key:'run · errors · output · status · register_command',comp:'The verify step; shares its store with the CLI.'},
+   {nm:'jetsam',tg:'git as a workflow',id:'Intention-level git — save / sync / ship — where every mutation returns a plan you confirm before it runs.',key:'save · sync · ship · start · confirm · git (escape hatch)',comp:'The persist step; plan→confirm guards the foot-guns of autonomous git.'},
+   {nm:'kibitzer',tg:'supervisor at the boundary',id:'Watches your tool calls. Two faculties: enforce (hard — modes, writable paths, policy) and coach (soft — suggestions, docs). Governance + in-session learning.',key:'ChangeToolMode · GetFeedback · GetDocContext · modes',comp:'Reads umwelt for rules; surfaces what agent-riggs learned.'},
+ ]},
+ {name:'Generate · remember · govern · sandbox',tools:[
+   {nm:'lackpy',tg:'intent → safe program',id:'A safe Python interpreter for subagents ("lackeys") — Python lacking the dangerous pieces — plus an intent→program generator over a local model.',key:'generate · validate · run_program · kits · interpreters (incl. literate)',comp:'Restricts via umwelt policy; sandboxed by nsjail.'},
+   {nm:'agent-riggs',tg:'cross-session memory',id:'The long memory: ingests turns, failures, and a trust score; promotes recurring fixes into "ratchets" a future session can act on.',key:'ingest · trust (EWMA) · ratchet promote/reject',comp:'A generator — it learns offline and emits rules; the runtime (kibitzer/umwelt) consumes them.'},
+   {nm:'umwelt',tg:'policy as a cascade',id:'A CSS-like cross-taxon contextual cascade compiled to a DB. Opt-in: consumers register their world; umwelt resolves the rules. Context-driven, with override semantics.',key:'world + .umw stylesheet → policy.db · resolve(context)',comp:'One authored source; kibitzer (enforce) and lackpy (policy) both read it.'},
+   {nm:'nsjail',tg:'sandboxed execution',id:'OS-level sandbox for untrusted code — the runtime backstop beneath lackpy’s restricted grammar. Defense in depth.',key:'restricted fs/net/resources',comp:'Wraps lackpy’s RestrictedRunner; deny by default, grant narrowly.'},
+ ]},
+];
+const LOOP=[
+ {v:'observe',q:'what is true now?',tools:'squackit · fledgling',do:'Never guess the code — query it. project_overview to orient; investigate before you change a symbol.'},
+ {v:'act',q:'change it',tools:'(you — edit files)',do:'The one step that is genuinely yours, not a tool. Edit the exact spans a query pointed you at.'},
+ {v:'verify',q:'did it work?',tools:'blq',do:"Run tests/build *through* blq and read blq.errors. A green you piped to tail and eyeballed is not a result you can act on."},
+ {v:'learn',q:'remember for next time',tools:'kibitzer · agent-riggs',do:'kibitzer coaches in-session; agent-riggs remembers across sessions — a failure seen once can be surfaced as a fix next time.'},
+];
+
+// reflex
+const rg=document.getElementById('reflexGrid');
+REFLEX.forEach(r=>{const d=document.createElement('div');d.className='card';
+ d.innerHTML=`<div class="bash">${r.bash.replace(/</g,'&lt;')}</div>
+   <div class="ans"><span class="tool">${r.tool}</span><div class="why">${r.why}</div></div>
+   <div class="hint">tap to reveal ▸</div>`;
+ d.onclick=()=>d.classList.toggle('show');rg.appendChild(d);});
+const qt=document.getElementById('quizToggle');
+qt.onclick=()=>{document.body.classList.toggle('quiz');
+ const on=document.body.classList.contains('quiz');
+ qt.textContent=on?'mode: test yourself ▸':'mode: show all answers ▸';
+ if(!on)document.querySelectorAll('.card').forEach(c=>c.classList.remove('show'));};
+
+// map
+const gc=document.getElementById('groups'),det=document.getElementById('detail');
+GROUPS.forEach(g=>{const sec=document.createElement('div');sec.className='group';
+ sec.innerHTML=`<h3>${g.name}</h3>`;const t=document.createElement('div');t.className='tiles';
+ g.tools.forEach(tool=>{const el=document.createElement('div');el.className='tile';
+  el.innerHTML=`<div class="nm">${tool.nm}</div><div class="tg">${tool.tg}</div>`;
+  el.onclick=()=>{document.querySelectorAll('.tile').forEach(x=>x.classList.remove('active'));el.classList.add('active');
+   det.innerHTML=`<div class="dn">${tool.nm}</div><div class="id">${tool.id}</div>
+     <div class="row"><div class="lab">key</div><div><code>${tool.key.split(' · ').join('</code> <code>')}</code></div></div>
+     <div class="row"><div class="lab">composes</div><div>${tool.comp}</div></div>`;};
+  t.appendChild(el);});sec.appendChild(t);gc.appendChild(sec);});
+
+// loop
+const lc=document.getElementById('loop'),ld=document.getElementById('loopDetail');
+LOOP.forEach((s,i)=>{const el=document.createElement('div');el.className='step';
+ el.innerHTML=`<div class="v">${s.v}${i<3?' <span class="arrow">→</span>':''}</div><div class="q">${s.q}</div>`;
+ el.onclick=()=>{document.querySelectorAll('.step').forEach(x=>x.classList.remove('active'));el.classList.add('active');
+  ld.innerHTML=`<b>${s.v}</b> — ${s.do}<div class="tools">${s.tools}</div>`;};
+ lc.appendChild(el);});
+</script>
+</body>
+</html>
