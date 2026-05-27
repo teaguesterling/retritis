@@ -383,3 +383,43 @@ instruments that provide it, selected the way goo selects a `Using:` channel.
 Open: where the facade lives (a suite-level MCP gateway? squackit-as-front-door?), and the
 collision-resolution policy (prefer the higher-level tool — squackit over fledgling — by
 default, overridable).
+
+---
+
+# Addendum D — Refinement from the refactor branch: lang is *just* the language
+
+Extracting `lackpy-lang` (branch `refactor/lackpy-lang`) surfaced a correction to the
+lackpy layering above.
+
+**The RFC said** `lackpy-lang` = "restricted language + validator + interpreter protocol +
+safe-Python interpreter." **The code says otherwise:**
+
+- `lang/` (grammar, validator, grader, spec) is a **pure leaf** — stdlib only, zero
+  intra-lackpy imports. Extracted directly: a curated public `__init__` + a
+  `test_no_upward_deps` guard. *Done.*
+- The **`Interpreter` protocol** (`interpreters/base.py`) is **execution-shaped**:
+  `validate(program, ctx)` **+ `execute(program, ExecutionContext{kit}) →
+  InterpreterExecutionResult`** (async). It is the runtime's *plugin contract*, not a
+  language definition.
+- The **safe-Python interpreter** (`interpreters/python.py`) imports
+  `run.runner.RestrictedRunner` — it cannot live in a pure language package without
+  dragging the runtime in.
+
+**Refined layering:**
+
+```
+  lackpy-lang   = grammar · validator · grader · spec        (pure leaf — EXTRACTED)
+  lackpy (rt)   = interpreter protocol + registry + concrete interpreters (python, …)
+                  + run/ + the unified config (kit/policy/sandbox)
+  lackpy-gen    = infer/ + prompts/ (intent → program)
+  lackpy-literate = the literate interpreter (frontend)
+```
+
+The interpreter protocol/registry stay with the runtime (next to the concrete interpreters
+they type and the runner they execute through). `lang` is *only* "what the language is and
+whether a program is valid" — which is exactly the leaf that extracted cleanly. This makes
+the lang↔runtime seam sharper than the original sketch: **lang knows nothing about
+execution; the runtime depends on lang (downward) for validation.**
+
+Net: the first extraction confirms the *direction* and corrects one boundary — the cleanest
+package is a smaller, purer `lackpy-lang` than the RFC first drew.
