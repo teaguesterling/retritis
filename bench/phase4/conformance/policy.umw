@@ -1,0 +1,20 @@
+/* Conformance policy — one source of truth, read by kibitzer AND lackpy.
+   Tool permission + constraints (unscoped + per-tool), mode properties (for
+   kibitzer's ModePolicy), and mode-scoped tool gating (review/explore lock down). */
+
+tool                  { allow: true; max-level: 8; }
+tool.dangerous        { max-level: 5; }
+tool[name="Edit"]     { allow-patterns: "src/**,tests/**"; deny-patterns: "**/*.secret"; }
+tool[name="Write"]    { allow-patterns: "src/**,tests/**"; }
+
+mode#implement { writable: "src/,tests/"; strategy: "tdd";        coaching-frequency: 2; }
+mode#review    { writable: "";            strategy: "read-only";  coaching-frequency: 5; }
+mode#explore   { writable: "";            strategy: "investigate"; coaching-frequency: 3; }
+
+mode#implement tool.dangerous       { max-level: 3; }
+mode#review    tool                 { allow: false; }
+mode#review    tool[name="Read"]    { allow: true; }
+mode#review    tool[name="Grep"]    { allow: true; }
+mode#explore   tool                 { allow: false; }
+mode#explore   tool[name="Read"]    { allow: true; }
+mode#explore   tool[name="Grep"]    { allow: true; }

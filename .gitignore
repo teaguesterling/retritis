@@ -1,0 +1,4 @@
+
+# kibitzer runtime state + pytest cache (bench)
+.kibitzer/
+.pytest_cache/

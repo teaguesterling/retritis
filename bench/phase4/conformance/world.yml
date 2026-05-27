@@ -1,0 +1,12 @@
+# Conformance world: the entities the policy resolves over.
+# umwelt needs both a world (entities) and a stylesheet (policy.umw); together they
+# compile to policy.db, which kibitzer + lackpy then read independently.
+entities:
+  - {type: tool, id: Read}
+  - {type: tool, id: Grep}
+  - {type: tool, id: Edit}
+  - {type: tool, id: Write}
+  - {type: tool, id: Bash, classes: [dangerous]}
+  - {type: mode, id: implement}
+  - {type: mode, id: review}
+  - {type: mode, id: explore}
