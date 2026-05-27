@@ -165,3 +165,107 @@ generation path*, or is superseded by emitting umwelt rules.)
    framing.
 3. Complete the deferred umwelt composition/addressing section and revisit the lackpy
    boundary questions; only then touch code.
+
+---
+
+# Addendum A — Composition & addressing (informed by cosmic-goo + an umwelt re-read)
+
+This completes the sections deferred above. Two reviews fed it: `cosmic-goo/doc/design`
+(protocol/addressing/composition) and a re-read of umwelt's AST + resolve engine.
+
+## Finding 1 — umwelt is *already* the event-in-context → rules engine
+
+The re-read settled the biggest open question. umwelt is **not** a tool/mode policy gadget;
+it is a **generalized cross-taxon contextual cascade**:
+
+- **Taxa** (`ast.py`): every selector is typed to a *taxon* resolved from a plugin registry.
+  Entity types (tool, mode, capability, state, **event**, path, …) are just registered
+  taxa — open-ended.
+- **The `context` combinator**: `mode#review tool { … }` is a *cross-taxon* scope (the
+  `CombinatorMode = structural | context | root` distinction). Cross-taxon scoping is the
+  native mechanism, not a mode special-case.
+- **Arbitrary active context** (`policy/queries.py`): resolve takes a
+  `ContextQualifier = (taxon, type_name, entity_id)` **list** — `_setup_active_context`
+  iterates *any* taxa. `mode=` is sugar for a single qualifier. So
+  `resolve(type="tool", id="Bash", context=[("event","event","on_failure"),
+  ("mode","mode","review")])` already works.
+- **Predicate layer**: pseudo-classes (`:has`, `:glob`, `:not`) + attribute ops
+  (`[path*="src/"]`, `^=`, `$=`) are exactly Plan-9-plumber's `data matches` and goo's
+  `valid_when` jq-predicate — in CSS form. Specificity is the cascade's weighting.
+
+**Consequence:** "umwelt as the single runtime rule system" needs **~zero engine change** —
+only (a) *vocabulary*: register the `event`/`state`/etc. taxa and define **property
+families** (enforce reads `allow`/`max-level`; coach reads `coach`/`suggest`/`doc`), and
+(b) *plumbing*: kibitzer's tie-in points pass the **full active context** (event + mode +
+tool + paths) into `resolve`, and each faculty reads its own property family off the same
+resolved entity. An event becomes a taxon; an action becomes a property. That's it.
+
+```
+   event#on_failure tool.dangerous          { coach: "check the sandbox section"; }
+   mode#review      tool                     { allow: false; }
+   mode#implement   capability[path*="src/"] { allow: true; max-level: 8; }
+        ▲ taxon        ▲ taxon + predicate        ▲ property family (enforce | coach)
+```
+
+## Finding 2 — the composition model to borrow from cosmic-goo
+
+cosmic-goo independently converged on the patterns the suite needs; adopt the *concepts*
+(not the `goo://` wire):
+
+1. **Capabilities, not kinds.** A tool is a bundle of capabilities that compose, not a
+   monolith. kibitzer's **enforce** and **coach** are two *capabilities* reading the same
+   umwelt resolution (constraint properties vs action properties) — the goo `{read, write,
+   process}` idea applied to rules. This is the precise form of "composite identity."
+2. **"A verb is abstract; instruments implement it."** goo refuses `summarize-fabric` vs
+   `summarize-duckdb`; one verb, the channel implements it via `Using:`. **lackpy's
+   interpreters are exactly this** — *run* is the verb; the interpreter (literate, restricted-
+   python, ast-select) is the **instrument**, selected by the runtime **config**. "Config
+   configures the runtime *and its language*" = "the `Using:` slot picks the instrument."
+3. **Channels ≈ fabric patterns ≈ MCP tool schemas.** goo's `OPTIONS` slot-schema *is* an
+   MCP `inputSchema` (`accepts→emits` + params), and a goo channel is a fabric-style
+   pattern+execution. This is the concrete backing for "interpreters align with MCP
+   templates / fabric patterns": a lackpy interpreter is a typed `accepts → emits` channel
+   whose schema is its MCP tool surface. literate = `accepts: literate-doc, emits: program`.
+4. **Negotiate on capability, not identity.** goo's `From:`-is-`User-Agent` rule:
+   never branch on *who* the caller is; negotiate on what it *accepts/provides*. For the
+   suite: kibitzer should gate on the *capabilities/context* of a call (taxa + predicates),
+   not on a tool's name; lackpy should select an interpreter by `accepts/emits`, not by a
+   hardcoded switch.
+5. **References, not data** (+ buffers materialize data→reference). The suite already passes
+   references (paths, `policy.db`, symbols, ratchet keys); name it as a principle and keep
+   data-producing stages (gen output, query results) addressable.
+
+## Finding 3 — agent-riggs as a rule generator, concretely
+
+With umwelt as a cascade, riggs's output is **`.umw` rules / `RuleBlock`s** (or rows the SQL
+compiler turns into cascade candidates), *contributed like a plugin's rules* — plumber's
+`[[dispatch]]` table, learned. **Promotion = a generated rule graduating into the active
+cascade.** This replaces "kibitzer reads riggs' `ratchet_decisions` at runtime": kibitzer
+reads **umwelt**; riggs *populates* umwelt offline. (The RatchetConsumer built this session
+becomes part of riggs's generation/registration path, not a kibitzer runtime dependency.)
+
+## Net architecture (revised)
+
+```
+  GENERATORS (offline)                 RUNTIME RULE SYSTEM            RUNTIMES (online)
+  ───────────────────                  ──────────────────            ─────────────────
+  agent-riggs  ── emits .umw rules ──►  umwelt  ──── resolve ───────► kibitzer: enforce (constraint props)
+  (learns from sessions)               (cross-taxon contextual                 coach   (action props + docs)
+                                        cascade; taxa+predicates)     lackpy:   policy on the run-config
+  lackpy-gen   ── emits program ─────►  (program)  ── run ──────────► lackpy runtime (interpreter = instrument,
+  (intent→program)                                                    config = capabilities+language+sandbox)
+```
+
+Two generator→runtime pairs (`riggs→umwelt`, `lackpy-gen→program`), one shared rule engine
+(umwelt) that every runtime consults, and composition by **capability + instrument +
+context**, not by enumerating combined tools. That is the suite's composite identity.
+
+## Resolved / still open
+
+- **Resolved:** umwelt is the runtime rule engine (no new engine); events=taxa,
+  actions=properties; riggs emits rules; interpreters=instruments=channels≈MCP-schemas;
+  enforce/coach=capabilities.
+- **Still needs design:** the lackpy gen↔runtime package line (the coupling); the concrete
+  taxa/property vocabulary (`event`, `state`, `coach`/`suggest` names) and whether to adopt a
+  goo-style *address* for events/rules; the riggs→umwelt emission format + how promotion
+  writes into a live cascade; contract/versioning for each new boundary.
