@@ -423,3 +423,62 @@ execution; the runtime depends on lang (downward) for validation.**
 
 Net: the first extraction confirms the *direction* and corrects one boundary — the cleanest
 package is a smaller, purer `lackpy-lang` than the RFC first drew.
+
+---
+
+# Addendum E — Interpreter types: execution models × language profiles
+
+A finding while extracting lackpy-lang + a design question about interpreter *kinds*
+(python-derived, micro-DSL, incremental/kernel, literate). They resolve into **two
+orthogonal axes**, and separating them sharpens the lang↔runtime split.
+
+## Two axes
+
+- **Language axis — lives in `lackpy-lang`.** grammar + validator + grader + spec. Today a
+  single restricted-Python language; generalizes to multiple **profiles** (a micro-DSL is a
+  *different language* with its own grammar/validator/spec). "Config configures the
+  language" = config selects a profile from lackpy-lang. (So lackpy-lang may host several
+  profiles, or a DSL interpreter brings its own — open, below.)
+- **Execution-model axis — lives in the runtime.** *How* source runs. A small family of
+  **base interpreter types**, all under the `Interpreter` protocol:
+  - **OneShot** — `validate → execute once → result`; stateless. (restricted-Python today;
+    a micro-DSL.) The *current* protocol models exactly this.
+  - **Incremental / Kernel** — a **stateful session**: `open → execute(cell)* → close`, the
+    namespace persists (Jupyter-kernel shape). Needs a lifecycle the one-shot protocol lacks.
+  - **Composite** — decomposes a document, routes blocks to **sub-interpreters**, assembles.
+    **Literate is this** — an interpreter *of* interpreters; it delegates rather than
+    executes, which is why it's a frontend/orchestrator (its own package, `lackpy-literate`),
+    not a peer interpreter.
+
+A concrete interpreter = **(language profile) × (execution model)**:
+`restricted-python·one-shot`, `sql-dsl·one-shot`, `python·kernel` (incremental),
+`literate·composite-over-{one-shot|kernel}`.
+
+## cosmic-goo lens
+
+Each interpreter is a channel (`accepts → emits`):
+- **one-shot** = `source → result`;
+- **incremental** = a *stateful* `{read,write}` channel — goo's named buffer / session;
+- **composite** = goo composition / sub-channels — literate routes blocks to sub-channels
+  the way a verb composes instruments.
+
+## Protocol implication
+
+The current `Interpreter` (`validate` + `execute → single InterpreterExecutionResult`,
+async) models **only one-shot**. The family wants either sub-protocols or capability flags:
+- `IncrementalInterpreter(Interpreter)` — adds a session lifecycle (`open_session`,
+  `execute_in(session, cell)`, `close`) or a `stateful` capability + session handle.
+- `CompositeInterpreter(Interpreter)` — holds sub-interpreters + a `decompose` step;
+  literate is the first.
+A registry that advertises each interpreter's `(language, model, accepts→emits)` is then the
+MCP-schema/OPTIONS surface from Addendum C.
+
+## Open
+
+- Protocol shape: sub-protocols vs capability flags on one protocol.
+- Language profiles: does `lackpy-lang` host multiple (restricted-python + DSLs), or does a
+  DSL interpreter ship its own validator? (Leaning: lang hosts profiles; config selects.)
+- Incremental + kit/policy/sandbox: state persists across cells — does policy re-resolve
+  per cell, and how does the sandbox span a session?
+- This axis is **runtime**, confirming Addendum D: the interpreter layer (protocol +
+  base types + concrete interpreters) sits with the runtime, atop `lackpy-lang`.
