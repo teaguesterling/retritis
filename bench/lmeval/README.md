@@ -33,6 +33,9 @@ phase 1). The judge's verbatim reference is kept (`results/_judge_answer.txt` is
 the durable copy is the `judge_answer` column).
 
 ## Run
+See **RUN.md** for the turnkey procedure (`gen-local` → blind references → reviews → report).
+The set: 8 questions x 6 models (`questions.jsonl`, `models.txt`).
+
 - Add questions to `questions.jsonl` (`{"id","question"}`). Pick tasks with **non-obvious
   correct answers** or suite-domain depth — NOT the phase-4 bench scenarios (the judge
   knows their fixes, which breaks the blind-reference property).

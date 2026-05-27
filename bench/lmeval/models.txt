@@ -1,0 +1,8 @@
+# Local models under test (ollama on longbottom). One per line; '#' comments.
+# General coding/reasoning models — head-to-head on questions.jsonl.
+qwen3:14b-iq4xs
+qwen3:14b
+smallthinker-21b:iq4xs
+gpt-oss:20b
+qwen3.5:35b
+qwen2.5:7b
