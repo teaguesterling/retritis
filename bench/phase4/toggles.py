@@ -21,9 +21,20 @@ def env_for(integrations: dict[str, bool], fixture: Path) -> dict[str, str]:
 
     # C - persistent fact substrate
     if integrations.get("C"):
-        # ON: file-backed fledgling cache (Phase 4 workstream C).
-        # env["FLEDGLING_PERSIST"] = str(fixture / ".fledgling/cache.duckdb")
-        raise NotImplementedError("toggle C ON: persistent cache not built yet (workstream C)")
+        # ON: file-backed fledgling cache (workstream C). The cache must outlive the
+        # per-run throwaway worktree, so it lives under results/_ccache keyed by a
+        # run-index-stripped stem (every run of a scenario shares one cache; content
+        # is identical across runs at the same git ref, so the staleness key matches).
+        cache_dir = fixture.parent.parent / "_ccache"
+        cache_dir.mkdir(parents=True, exist_ok=True)
+        stem = fixture.name.rsplit(".", 1)[0]  # "S06....proxy.C.3" -> "S06....proxy.C"
+        env["FLEDGLING_PERSIST"] = str(cache_dir / f"{stem}.duckdb")
+        # The persist feature lives in *current* fledgling (the tool), while the fixture
+        # is an older fledgling checkout (the corpus to index). _isolated_env prepends the
+        # fixture to PYTHONPATH, which would shadow the tool with the corpus's pre-persist
+        # code. Clear it so `import fledgling` resolves to the installed/current version;
+        # the corpus is still indexed via cwd=fixture (root=".").
+        env["PYTHONPATH"] = ""
     # OFF: nothing -> fledgling.connect(persist=None), in-memory rebuild.
 
     # B - one policy, two enforcers

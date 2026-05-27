@@ -2,3 +2,7 @@
 # kibitzer runtime state + pytest cache (bench)
 .kibitzer/
 .pytest_cache/
+
+# phase4 bench build artifacts (persistent caches + throwaway worktrees)
+bench/phase4/results/_ccache/
+bench/phase4/results/_work/
