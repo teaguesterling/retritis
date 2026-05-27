@@ -42,6 +42,15 @@ This book is written for two readers at once:
 - [A. The bash → suite cheat sheet](A-cheatsheet.md)
 - [B. Per-server tool reference](B-tool-reference.md)
 
+## Status & direction
+
+This guide describes the **shipped** suite — what you use today. The architecture is
+actively evolving; for the *proposed* revisions (splitting lackpy into language/runtime/
+generator, kibitzer's explicit enforce/coach faculties, umwelt as an opt-in
+event-in-context rule engine, agent-riggs as umwelt's rule *generator*) see
+[RFC 0001 — Suite architecture](../rfcs/0001-suite-architecture.md). Where this guide and
+the RFC differ, the guide is *now* and the RFC is *next*.
+
 ## Conventions
 
 - **Agent Recipe** callouts give a copy-pasteable tool-first way to do a common task.

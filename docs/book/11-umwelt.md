@@ -56,6 +56,15 @@ the first real policy. The conformance is now the tripwire.
 > *real* engine to produce the expected verdict; don't hand-roll fixtures of "what the
 > policy should say." A fixture encodes your belief; the engine encodes the contract.
 
+## Opt-in by design
+
+umwelt is **opt-in and mutual** — nothing in the suite depends on it by default. A consumer
+that wants it *registers its world* (`register_matcher`/`register_entity` — umwelt does not
+pre-enumerate the entities; the consumer, which knows them, supplies them) and umwelt
+supplies *resolution*. With no consumer registered it degrades gracefully (raw rule scan),
+and every consumer keeps a no-umwelt fallback (kibitzer falls back to its config). The power
+stays behind the opt-in boundary.
+
 ## Authoring tips
 
 - Keep the world minimal — only entities you actually scope rules to.
