@@ -71,3 +71,28 @@ the revised number here with its reason.
   corpus is complete; runnability grows as C/B/A land.
 - **Fixture isolation** validated only for fledgling pytest scenarios (PYTHONPATH shadows
   the lenient editable). squackit-CLI scenarios (S05) need a per-fixture venv — open.
+
+---
+
+## Workstream C — RESULTS (2026-05-26, persist landed)
+
+fledgling `feat/persist-cache` (0.11.0): `connect(persist=, read_only=)` +
+`build_cache()`. Measured via `bench/phase4` toggle **C ON** (`results/proxy.C.jsonl`,
+5 runs each; run 0 is the cold build-on-demand, runs 1–4 are warm cache hits):
+
+| metric | baseline p95 | bar | C ON p95 | verdict |
+|---|---|---|---|---|
+| **C** · repeated FTS query (S06) | 4349 ms | < 435 ms | **366 ms** | ✅ MET (12×) |
+| **C** · FTS build/attach cost (S07) | 4242 ms | < 425 ms | **307 ms** | ✅ MET (14×) |
+
+The cold build in run 0 (~5.1 s, ≥ the 4349 ms baseline) confirms the new tool builds
+no faster — the win is purely the cache hit, so the speedup is conservative. Zero
+staleness is enforced by a git-content key (excludes the cache file itself);
+`fledgling/tests/test_persist.py` covers round-trip, idempotence, stale-on-change, and
+read-only write-rejection (7/7).
+
+**Still open for C's full definition-of-done:** `S16 codenav_under_hooks` — doc-context
+coaching firing within the kibitzer PreToolUse budget (bar ≥95%). Now *unblocked* by the
+cheap cache hit, but the kibitzer-hook wiring + S16 check are a separate next increment.
+Concurrency is single-writer (DuckDB-enforced); last-good-snapshot fallback + incremental
+per-file rebuild deferred.
