@@ -98,3 +98,28 @@ coaching firing within the kibitzer PreToolUse budget (bar ≥95%). Now *unblock
 cheap cache hit, but the kibitzer-hook wiring + S16 check are a separate next increment.
 Concurrency is single-writer (DuckDB-enforced); last-good-snapshot fallback + incremental
 per-file rebuild deferred.
+
+---
+
+## Workstream A — consumer + contract DONE (A/B deferred)
+
+The learn-loop consumer is built and tested; the headline A/B is gated on the full-agent
+runner (not this slice).
+
+**Built (kibitzer dev, `src/kibitzer/ratchet/consumer.py`, `tests/test_ratchet_consumer.py` — 10 tests):**
+- `RatchetConsumer.from_db(.riggs/store.duckdb)` / `from_env("RIGGS_RATCHET_DB")` — read-only
+  reader of agent-riggs' **promoted** ratchets (`ratchet_decisions WHERE decision='promoted'`),
+  graceful on missing file *and* missing table (the OFF state), evidence parsed, matches
+  ordered by evidence trust (`avg_trust`/`success_rate`).
+- `coaching_for_failure(tool, mode, category)` — the hook-facing surface (kept out of the live
+  PostToolUse hot-path until the precision bar is validated; a wrong suggestion is worse than none).
+- **Producer-driven contract tripwire:** seeds `failure_stream`, runs the *real*
+  `find_constraint_candidates` + `ratchet promote`, freezes the store, and asserts
+  `RatchetConsumer.constraint_key(category,tool,mode)` == the producer's `candidate_key`
+  (`f"{category}-{tool or 'unknown'}-{mode or 'any'}"`). Red if agent-riggs changes the key format.
+
+**Deferred (the measurable T3 A/B — bar: ≥30% repeat-failure reduction, ≤10% false-promotion):**
+needs the full-agent runner (`run_agent="full"`, still stubbed) to drive a real
+observe→surface→resolve cycle over S12–S15 with a seeded-then-frozen store. Toggle A ON
+raises (loudly) pointing at this. agent-riggs is the producer (unchanged); promotion stays
+explicit (`agent-riggs ratchet promote`), per the calibration decision.

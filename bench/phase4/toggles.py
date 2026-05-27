@@ -46,9 +46,20 @@ def env_for(integrations: dict[str, bool], fixture: Path) -> dict[str, str]:
 
     # A - learn loop
     if integrations.get("A"):
-        # ON: seeded-then-frozen ratchet store + a RatchetConsumer in kibitzer/lackpy.
-        # env["RIGGS_RATCHET_DB"] = str(fixture / ".retritis/riggs.duckdb"); env["RIGGS_FROZEN"] = "1"
-        raise NotImplementedError("toggle A ON: ratchet consumer not built yet (workstream A)")
+        # ON: kibitzer reads agent-riggs' PROMOTED ratchets from a frozen store and surfaces
+        # the recorded pattern as coaching. The consumer + its producer-key contract are BUILT
+        # and tested in kibitzer (src/kibitzer/ratchet/consumer.py; tests/test_ratchet_consumer.py
+        # — RatchetConsumer.from_db/from_env, coaching_for_failure, and a producer-driven
+        # candidate_key conformance). What remains for the *measurable* repeat-failure A/B
+        # (S12-S15) is the full-agent runner (run_agent="full", still stubbed) to drive a real
+        # observe->surface->resolve cycle + a seeded-then-frozen store. Until then a meaningful
+        # A-ON measurement can't be produced, so fail loudly rather than measure OFF behavior.
+        #   env-to-set once the runner lands: RIGGS_RATCHET_DB=<frozen store>, RIGGS_FROZEN=1,
+        #   PYTHONPATH=~/Projects/kibitzer/src (dev kibitzer with RatchetConsumer).
+        raise NotImplementedError(
+            "toggle A ON: consumer+contract built & tested in kibitzer; the repeat-failure A/B "
+            "is deferred to the full-agent runner (run_agent='full')"
+        )
     # OFF: empty/absent ratchet store.
 
     return env
