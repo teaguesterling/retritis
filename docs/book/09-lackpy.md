@@ -23,6 +23,29 @@ CLI: `lackpy -c "<intent>" [--generate|--validate|--create]`; `lackpyctl` manage
 workspaces, kits, toolboxes, templates, and the MCP server. `language_spec` documents the
 allowed language — read it before assuming a Python feature exists.
 
+## Two distributions: language vs runtime (0.12+)
+
+As of 0.12, lackpy ships as **two** [PEP 420](https://peps.python.org/pep-0420/) namespace
+distributions that share the `lackpy` namespace:
+
+- **`lackpy-lang`** — the language *leaf*: grammar, validator, grader, spec. Stdlib-only,
+  no runtime, no model. This is the "language-level guarantee" the validate step relies on.
+- **`lackpy`** — the runtime: generation, the `RestrictedRunner`, kits, the policy chain, the
+  MCP server. Depends on `lackpy-lang`.
+
+Neither ships a top-level `lackpy/__init__.py`, so import from submodules — there are no
+top-level re-exports:
+
+```python
+from lackpy.lang import validate, compute_grade   # just the language (lackpy-lang)
+from lackpy.service import LackpyService           # the runtime (lackpy)
+```
+
+The payoff: a tool that only needs to *reason about* programs — validate, grade, or share
+the language's vocabulary — can `pip install lackpy-lang` without the runtime. kibitzer does
+exactly this: it imports the shared failure-mode taxonomy from `lackpy.lang.failure_modes`
+(Chapter 8) rather than mirroring it.
+
 ## Kits and toolboxes
 
 A **kit** is the resolved set of tools/callables a generated program may use; a **toolbox**
