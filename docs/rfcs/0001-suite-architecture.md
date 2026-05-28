@@ -424,6 +424,18 @@ execution; the runtime depends on lang (downward) for validation.**
 Net: the first extraction confirms the *direction* and corrects one boundary — the cleanest
 package is a smaller, purer `lackpy-lang` than the RFC first drew.
 
+**Shipped (2026-05-27, lackpy 0.12.0 — merged to lackpy `main` `0c1e622`).** The subpackage
+extraction above was promoted to a real, separately-installable **distribution**:
+`lackpy-lang` and `lackpy` are now two PEP 420 namespace dists sharing the `lackpy` namespace
+(neither ships `lackpy/__init__.py`; the top-level convenience re-exports were dropped —
+submodule imports only). `lackpy-lang` is stdlib-only and targets `>=3.10` (a wider floor
+than the `>=3.11` runtime), so coaching-side consumers can take it without the runtime. First
+such consumer: the **failure-mode taxonomy** moved into `lackpy.lang.failure_modes` (the
+shared generator↔coach vocabulary); **kibitzer now imports it instead of mirroring it**
+(`lackpy.infer` re-exports + keeps `classify_failure`). `lackpy-literate`/`lackpy-gen` from
+the layering above remain unsplit (single repo) for now. Publishing is gated on a `lackpy-lang`
+PyPI trusted-publisher (not yet created).
+
 ---
 
 # Addendum E — Interpreter types: execution models × language profiles
