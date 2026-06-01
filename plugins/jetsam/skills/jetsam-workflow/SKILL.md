@@ -1,6 +1,6 @@
 ---
 name: jetsam-workflow
-description: Use this skill for ALL git and GitHub operations. When the user asks to commit, push, create PRs, check CI, manage issues, or any git workflow task, route through jetsam MCP tools instead of running git/gh commands through Bash.
+description: Use this skill for ALL git and GitHub workflow operations. Triggers on commit/save, push/sync, ship, release/tag, open or merge PR, check CI, manage issues, start/switch/finish a branch, or anything phrased like "ship it", "bump and tag", "merge when green", "release v...". Route through jetsam workflow verbs (save / sync / ship / release / start / switch / finish / tidy / checks) — NOT raw `git`/`gh` via Bash and NOT the low-level `mcp__jetsam__git` passthrough. Workflow verbs return plans you confirm() before they execute, catching mistakes before history is written. Use the `git` passthrough only when no workflow verb fits.
 version: 1.0.0
 ---
 
