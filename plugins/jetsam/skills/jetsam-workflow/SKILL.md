@@ -16,6 +16,27 @@ tools instead of running git or gh commands through Bash.
 - **Query operations** (status, log, diff, etc.) return results directly.
 - **All errors** return `{error, message, recoverable}` dicts.
 
+## Important: workflow tools target the current working directory
+
+Both workflow verbs (`status`, `save`, `sync`, `ship`, etc.) and query tools
+(`log`, `diff`) operate on the **current working directory's** git repo.
+They do NOT accept a `-C` / `cwd` / `path` argument — passing one is silently
+ignored and you get results for the wrong repo.
+
+**When you need cross-repo operations** (typing inside repo A but want to act
+on repo B), use the `mcp__jetsam__git` passthrough with `-C <path>` instead:
+
+```
+# WRONG — silently runs against cwd, not /home/teague/Projects/other
+mcp__jetsam__status(args=["-C", "/home/teague/Projects/other"])
+
+# RIGHT — passthrough explicitly targets the path
+mcp__jetsam__git(args=["-C", "/home/teague/Projects/other", "log", "--oneline", "-5"])
+```
+
+This is one of the legitimate uses of the passthrough — workflow verbs
+intentionally bind to cwd to keep their plan-state coherent.
+
 ## Routing table
 
 Do NOT run git or gh commands through Bash. Use these JetSam MCP tools instead:
