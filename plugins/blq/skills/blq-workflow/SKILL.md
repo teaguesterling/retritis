@@ -1,6 +1,6 @@
 ---
 name: blq-workflow
-description: Use this skill for ALL build, test, and CI operations. When the user asks to run tests, build, check lint, run type checking, or analyze build output, route through blq MCP tools instead of running commands through Bash. Also use when analyzing errors, filtering output, or checking CI status.
+description: All build, test, and CI operations — capture output, query later. Triggers on "run the tests", "build it", "rebuild", "what errored", "check lint", "run typecheck", "what was the test output", "diff against the previous run", "what's failing in CI". Route through blq MCP tools instead of `pytest`/`make`/`cargo`/`npm` through Bash, because blq captures + indexes output for query without re-running, extracts structured errors (no manual grep), and tracks run history. NO shell pipes — run first, then filter with `output(grep=..., tail=...)`. Use `commands()` to list registered build/test/lint/typecheck targets before running.
 version: 1.0.0
 ---
 

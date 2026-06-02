@@ -1,6 +1,6 @@
 ---
 name: fledgling-workflow
-description: Use this skill for code analysis, AST-based search, git diff analysis, code structure exploration, and Claude conversation history. When the user asks to find definitions, analyze code structure, compare git revisions, search conversations, or explore past sessions, use fledgling MCP tools instead of grep/git commands.
+description: Code intelligence primitives — AST-based search, git diff/show, Claude conversation history. Triggers on "find this function/class", "what does this look like at HEAD~3", "diff between revisions", "search past sessions", "complexity hotspots", "module dependencies". PREFER squackit-workflow first for everyday code-search ("find/where is/show me X" in source) — squackit is a higher-level wrapper over fledgling that handles FTS+caching. Fall through to fledgling here when squackit doesn't cover the query: git revision reads (GitShow), cross-revision diffs (GitDiffSummary/GitDiffFile), Claude session history (ChatSearch/ChatSessions/ChatToolUsage), or direct SQL via `query` for complexity/dependency/structural-diff macros. NOT raw `grep`/`git log`/`git diff` via Bash — those bypass the AST + indexed history that's the whole point.
 version: 1.0.0
 ---
 
