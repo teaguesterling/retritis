@@ -98,9 +98,17 @@ squackit caches per project root. To query a different repo:
 
 ## Tips
 
-- For "what's in this codebase?" → `project_overview` then drill with `code_structure`
-- For "find the function that does X" → `find_names("X")` or `find(".fn#X")` selector
-- For "trace this bug" → `investigate(symbol)` then `find_callers(symbol)`
-- For "what changed recently?" → `recent_changes()` or `file_changes(path)`
-- For "how is this function actually used?" → `find_callers` not grep
-- Results are token-aware — adjust depth/limit if you need more detail
+- For "what's in this codebase?" → `project_overview()` for language counts, then `find_names(source, selector=".cls")` / `find_names(source, selector=".fn")` for top-level structure.
+- For "find the function that does X" → `find_names(source, selector=".fn#X")`.
+- For "trace this bug" → `investigate(name)` for definition + source + callers + callees in one call.
+- For "what changed recently?" → `recent_changes()` (commits) or `file_changes(file)` (per-file history).
+- For "how is this function actually used?" → `investigate(name)`; the "Called by" table lists direct call sites. (Note: a function used as a *value* — passed as a callback, decorator argument, etc. — is NOT listed; for that use `find(source, selector=".call#name")` and inspect the surrounding context.)
+- Results are token-aware — adjust `max_results`/`max_lines` if you need more detail.
+
+## Known limitations (verified empirically 2026-06-04)
+
+- **`explore` "Key Definitions" can silently fail** on some projects (returns "(could not load)" with no reason). Workaround: fall through to `find_names(source, selector=".fn")` + `complexity(source, selector=".fn", max_results=20)`.
+- **`explore` "Recent Activity" reads session cwd, not the `path` argument**. If you `explore(path="/some/repo")` from cwd `/other/repo`, the recent-activity section shows /other/repo's git log. Workaround: call `recent_changes(repo="/some/repo")` separately for the right repo.
+- **`investigate` source can truncate mid-function** without a "...more" marker. The Definition table's `end_line` is authoritative; if the Source section ends before that, fetch the remainder with `read_source(file_path, lines="<end>-")`.
+- **Selectors match call names, not attribute paths.** `find(source, selector=".call#connect")` matches BOTH `duckdb.connect()` and `instance.connect()` — the AST doesn't qualify by receiver. Workaround: after finding all matches, filter post-hoc by inspecting the `peek` column (it includes the full call expression like `duckdb.connect(...)` vs `db.connect()`).
+- **`find` rows have ~15 verbose AST columns** (node_id, semantic_type, flags, depth, sibling_index, children_count, etc.) that aren't usually relevant to the caller. The signal lives in `file_path`, `start_line`, `name`, and `peek`.
