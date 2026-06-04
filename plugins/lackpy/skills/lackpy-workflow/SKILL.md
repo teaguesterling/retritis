@@ -44,10 +44,10 @@ toolbox, then returns the result.
 - `delegate(intent, kit?, provider?)` — natural-language intent → generate program → validate → run → return result. The everyday call.
 
 ### Lower-level building blocks
-- `generate(intent, kit?)` — generate the program text without running it (use for previewing or debugging)
-- `validate(program)` — check a program against the AST whitelist
-- `run_program(program)` — execute a pre-validated program with traced tool calls
-- `create(...)` — create a new program / kit / config object (see implementation)
+- `generate(intent, kit?, params?, rules?, extra_tools?)` — generate the program text without running it (preview or debug).
+- `validate(program, kit?, rules?, extra_tools?)` — check a program against the AST whitelist.
+- `run_program(program, kit?, params?, rules?, sandbox?, extra_tools?)` — execute a pre-validated program with traced tool calls.
+- `create(program, name="", pattern?, kit?, extra_tools?)` — validate and **save a program as a reusable template** (NOT a generic factory).
 
 ### Configuration + discovery
 - `config()` — show / update the active lackpy configuration (provider, model, kits, sandbox settings)
@@ -59,8 +59,8 @@ toolbox, then returns the result.
 - `language_spec()` — show the lackpy language definition (the AST whitelist)
 
 ### Docs
-- `docs_index()` — index of available docs
-- `resolve_doc(query)` — resolve a docs query
+- `docs_index(kit?, extra_tools?)` — documentation references for a kit's tools and kit-level docs.
+- `resolve_doc(doc_path)` — read a documentation file by its **relative path** (NOT a search query). Returns content or null.
 
 ## Workflow patterns
 

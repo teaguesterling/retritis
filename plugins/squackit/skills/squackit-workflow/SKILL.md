@@ -37,49 +37,58 @@ Use these squackit MCP tools:
 
 ## Core tools
 
-### Find things
-- `find_names(pattern, type?)` — definitions by name pattern + node type (`.fn`, `.cls`, `.var`)
-- `find_definitions(symbol)` — cross-file symbol resolution
-- `find_callers(symbol)` — who calls / references this
-- `find(query)` — generic structural finder (selector syntax)
-- `find_code_ranked(query)` — ranked code search with relevance scoring
-- `find_names(query)` — name-pattern matching
+### Find things by AST selector
+- `find_names(source, selector, max_results?)` — names of AST nodes matching CSS selectors. `source` is a file/glob pattern (REQUIRED), `selector` is CSS-like (`.fn`, `.cls#name`, `.fn:has(.call#execute)`). For "find the function named X" use `find_names(source="**/*.py", selector=".fn#X")`. For "find all classes" use `selector=".cls"`.
+- `find(source, selector, max_results?)` — AST nodes + file paths + line ranges. Same selectors as `find_names`.
+- `find_code_ranked(selector?, fts_query?, file_pattern?, lang?, max_results?)` — code matches ranked by BM25 relevance.
+- `ast_select_from(source, selector)` — raw AST selector query (lower-level than `find`).
+- `view(source, selector, max_results?)` — render matching source as markdown with file:range headings + fenced code blocks.
 
 ### Read things
-- `read_source(path, range?)` — read a file or range
-- `read_context(symbol)` — read the *contextual* code around a symbol (smarter than line-range reads)
-- `read_doc_section(path, heading)` — pull a section from a markdown doc
+- `read_source(file_path, lines?, ctx?, match?, max_lines?)` — read lines with range/context/match filtering.
+- `read_context(file_path, center_line, ctx?, max_lines?)` — read lines centered around a specific line.
+- `read_doc_section(file_path, target_id, max_lines?)` — pull a markdown section by id (use `doc_outline` to find ids).
 
 ### Understand structure
-- `code_structure(path)` — file/module hierarchy with depth control
-- `project_overview()` — top-level project shape
-- `complexity(path)` — complexity hotspots
-- `call_graph(symbol)` — call relationships
-- `explore(path)` — interactive structural exploration
-- `investigate(symbol)` — deep dive on a symbol (definitions + callers + structure in one)
+- `project_overview(root?)` — file counts by language for the project.
+- `explore(path?)` — first-contact briefing: languages, key defs, docs, recent activity.
+- `investigate(name, file_pattern?)` — deep dive on a function or symbol: definition + source + callers + callees.
+- `complexity(source, selector, max_results?)` — AST nodes matching selector, ranked by complexity. `source` + `selector` required, NOT a path.
+- `call_graph(file_pattern?)` — call relationships within a file pattern (NOT a single symbol).
 
 ### Search across content (FTS)
-- `search(query)` — full-text search across the project
-- `search_code(query)` — code-aware search
-- `search_content(query)` — content-aware search (incl. comments + docstrings)
-- `search_docs(query)` — search documentation
-- `search_chat(query)` — search past Claude session transcripts (forwards to fledgling)
-- `search_messages(query)` — message-level chat search
+- `search(query, file_pattern?)` — multi-source: definitions + call sites + docs in one call.
+- `search_code(query, filter_kind?, root?, ...)` — BM25 over definitions + comments + string literals.
+- `search_content(query, filter_kind?, filter_extractor?, root?, ...)` — BM25 across all indexed content.
+- `search_docs(query, root?, ...)` — BM25 over markdown documentation sections.
+- `search_chat(query, role?, project?, days?, lim?)` — search past Claude session transcripts.
+- `search_messages(search_term)` — message-level chat search.
+- `doc_outline(file_pattern?, search?, max_lvl?, max_results?)` — markdown section outlines with optional keyword filter.
+- `fts_stats()` — FTS index health.
+
+### Pluckit chain queries (advanced selector composition)
+- `pluck(argv, allow_mutations?)` — whitespace-separated chain: `source_pattern [method [arg]]... [terminal]`. Terminals: `names | count | text | materialize | view | complexity`. Use `reset` to start fresh. Example: `**/*.py find .fn containing cache names`. Mutations blocked unless `allow_mutations=true`.
 
 ### Browse activity
-- `list_files(pattern)` — file listing with smart filters
-- `recent_changes()` — recent commits / changes
-- `file_changes(path)` — change history of a single file
-- `file_at_version(path, ref)` — read file at a git revision (forwards to fledgling)
-- `file_diff(path, from, to)` — file-level diff between revisions
-- `structural_diff(from, to)` — function-level structural diff
-- `changed_function_summary(from, to)` — summary of functions that changed
-- `branch_list()` / `tag_list()` / `working_tree_status()` — git state queries
+- `list_files(pattern?, commit?, max_results?)` — files by glob, optionally at a git commit.
+- `recent_changes(repo?, n?, max_results?)` — git commit history.
+- `file_changes(repo?, from_rev?, to_rev?, max_results?)` — files changed between two revisions.
+- `file_at_version(file, rev, repo?, max_lines?)` — file content at a git revision.
+- `file_diff(file, from_rev?, to_rev?, repo?, max_lines?)` — line-level unified diff between revisions.
+- `structural_diff(file?, from_rev?, to_rev?, repo?, max_results?)` — semantic diff: added/removed/modified definitions.
+- `changed_function_summary(from_rev?, to_rev?, file_pattern?, repo?, max_results?)` — changed functions ranked by complexity.
+- `review(from_rev?, to_rev?, file_pattern?)` — code review prep: changed files + top functions + diffs in one call.
+- `branch_list(repo?, max_results?)` — git branches.
+- `tag_list(repo?, max_results?)` — git tags.
+- `working_tree_status(repo?)` — untracked + modified files.
+
+### Claude session history (forwards to fledgling)
+- `sessions()` / `session_detail(sid)` / `messages()` / `tool_calls()` — session metadata + tool-call history.
+- `browse_sessions(project?, days?, lim?)` / `browse_tool_usage(project?, session_id?, days?, lim?)` — paginated browsing.
 
 ### Help + diagnostics
-- `help()` — list available tools
-- `dr_fledgling()` — diagnose fledgling backend health
-- `fts_stats()` — FTS index health
+- `help(target_id?)` — skill guide outline (no args) or section detail (with id). Returns fledgling's skill guide.
+- `dr_fledgling()` — diagnose the fledgling backend.
 
 ## Per-root opt-in
 

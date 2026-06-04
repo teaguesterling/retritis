@@ -12,43 +12,71 @@ instead of grep.
 
 ## When to use fledgling vs grep/git
 
-- **Find function/class definitions** → `FindDefinitions` (AST-based, not text match)
+- **First-contact briefing on an unfamiliar repo** → `ExploreProject` (one call: languages + top-complexity defs + doc outline + recent activity)
+- **Find function/class definitions by name** → `FindDefinitions` (AST-based, SQL LIKE patterns)
+- **Find code by structural pattern** → `FindCode` or `SelectCode` (CSS selectors: `.func#name`, `.class > .func`, `.func:has(.call#execute)`)
 - **Understand code structure** → `CodeStructure` (top-level overview with line counts)
-- **Search by code pattern type** → `FindInAST` (calls, imports, loops, etc.)
-- **Compare git revisions** → `GitDiffSummary`, `GitDiffFile`
-- **Read file at revision** → `GitShow`
-- **Browse Claude sessions** → `ChatSessions`, `ChatSearch`
+- **Multi-source search (defs + calls + docs)** → `SearchProject` (one pattern, every place it appears)
+- **BM25 full-text search** → `SearchCode` (defs+comments+strings) / `SearchDocs` (markdown) / `SearchContent` (all indexed content)
+- **Browse documentation** → `MDOverview` (outline) → `MDSection` (read by section id)
+- **Compare git revisions** → `GitDiffSummary` (file-level) → `GitDiffFile` (line-level)
+- **Read file at a git revision** → `GitShow`
+- **Change review prep** → `ReviewChanges` (changed files + functions by complexity)
+- **Browse Claude sessions** → `ChatSessions` / `ChatSearch` / `ChatToolUsage` / `ChatDetail`
+- **Direct SQL over the index** → `query` (for macros: `complexity_hotspots`, `module_dependencies`, `structural_diff`, `changed_function_summary`, `doc_outline`)
 
 ## Tool reference
 
 ### Code analysis
 | Tool | Use for |
 |---|---|
-| `FindDefinitions` | Find functions, classes, variables by name pattern (SQL LIKE `%`) |
-| `CodeStructure` | Top-level structural overview — definitions with line counts |
-| `FindInAST` | Search by category: calls, imports, definitions, loops, conditionals |
+| `FindDefinitions(file_pattern, name_pattern)` | Definitions by name pattern (SQL LIKE `%`). AST-based, not grep. |
+| `FindCode(file_pattern, selector, language?)` | Search code by CSS selector. Composes `:has`, `:not`, combinators. |
+| `SelectCode(source, selector)` | View matching code: markdown with file:range headings + source blocks. |
+| `ViewCode(file_pattern, selector, context?)` | View matched source with optional context lines around each match. |
+| `CodeStructure(file_pattern)` | Top-level structural overview — definitions with line counts. |
+| `ExploreProject(root?, code_pattern?, doc_pattern?, top_n?, recent_n?)` | First-contact briefing in one call. |
+| `InvestigateSymbol(name, file_pattern?)` | Deep dive: definitions + callers + call sites. |
+
+### Search (BM25 / FTS)
+| Tool | Use for |
+|---|---|
+| `SearchProject(pattern, file_pattern?, doc_pattern?, top_n?)` | Multi-source: definitions + call sites + docs in one call. |
+| `SearchCode(query, kind?)` | Code (definitions, comments, string literals). `kind=definition|comment|string`. |
+| `SearchDocs(query)` | Markdown documentation sections only. |
+| `SearchContent(query, kind?, extractor?)` | All indexed content (docs + code). |
+| `FtsStats()` | FTS index health — counts per extractor/kind. |
 
 ### Git analysis
 | Tool | Use for |
 |---|---|
-| `GitDiffSummary` | File-level change summary between two revisions |
-| `GitDiffFile` | Line-level unified diff of a single file between revisions |
-| `GitShow` | Show file content at a specific git revision |
+| `GitDiffSummary(from_rev, to_rev, path?)` | File-level change summary between two revisions. |
+| `GitDiffFile(file, from_rev, to_rev)` | Line-level unified diff of a single file. |
+| `GitShow(file, rev)` | File content at a specific git revision. |
+| `ReviewChanges(from_rev?, to_rev?, file_pattern?, top_n?)` | Changed files + functions ranked by complexity. |
+
+### Documentation
+| Tool | Use for |
+|---|---|
+| `MDOverview(pattern?, search?, max_level?)` | Markdown section outlines with optional keyword filter. |
+| `MDSection(file_path, section_id)` | Read a section by ID from a markdown file. |
 
 ### Conversation history
 | Tool | Use for |
 |---|---|
-| `ChatSessions` | Browse Claude Code sessions — duration, tool usage, tokens |
-| `ChatSearch` | Search conversation content across sessions |
-| `ChatToolUsage` | Analyze tool usage patterns across sessions |
-| `ChatDetail` | Detailed view of a specific session |
+| `ChatSessions(project?, days?, limit?)` | Browse sessions (metadata, duration, tool usage, tokens). |
+| `ChatSearch(query, role?, project?, days?, limit?)` | Full-text search across messages (user + assistant). |
+| `ChatToolUsage(project?, session_id?, days?, limit?)` | Tool usage frequency patterns across sessions. |
+| `ChatDetail(session_id)` | Deep view of a single session: metadata, costs, per-tool breakdown. |
 
-### Utilities
+### Database + SQL
 | Tool | Use for |
 |---|---|
-| `ReadLines` | Read specific line ranges from files |
-| `MDSection` | Extract a section from a markdown file by heading |
-| `Help` | Show available fledgling commands and usage |
+| `query(sql, format?)` | Read-only SQL over the index. Use for macros (see below). |
+| `list_tables(schema?, database?, include_views?)` | Available tables + schemas + row counts. |
+| `describe(table?, query?)` | Schema info for a table or query. |
+| `ReadLines(file_path, lines?, ctx?, match?, commit?)` | Read line range with optional context/filter; supports git revisions. |
+| `Help(section?)` | Skill guide — call with no args for outline, with section id for detail. |
 
 ## Advanced queries
 

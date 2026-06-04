@@ -33,26 +33,31 @@ Do NOT run build/test commands through Bash. Use blq MCP tools instead:
 
 ### Run registered commands
 ```
-mcp__blq_mcp__commands()           # list available commands
-mcp__blq_mcp__run(command="test")  # run a registered command
-mcp__blq_mcp__run(command="test", lines="+20-")  # run and get last 20 lines inline
+mcp__blq_mcp__commands()                          # list available commands
+mcp__blq_mcp__run(command="test")                 # run a registered command
+mcp__blq_mcp__run(command="test", lines="+20-")   # run and return last 20 lines inline
+mcp__blq_mcp__exec(command="pytest -k foo")       # ad-hoc command (no pipes/redirects)
+mcp__blq_mcp__register_command(name="lint", cmd="ruff check src/")  # register new
 ```
 
 ### Analyze results
 ```
-mcp__blq_mcp__status()             # current build/test status
-mcp__blq_mcp__errors()             # view errors from recent runs
-mcp__blq_mcp__output(tail=20)      # last 20 lines of output
-mcp__blq_mcp__output(grep="FAIL")  # search output
-mcp__blq_mcp__info(ref="latest")   # detailed run info
-mcp__blq_mcp__events()             # all events (errors, warnings, info)
+mcp__blq_mcp__status()                             # current source status summary
+mcp__blq_mcp__events(severity="error")             # filter events — replaces errors()
+mcp__blq_mcp__events(severity="error,warning")     # combined filter
+mcp__blq_mcp__output(ref="latest", tail=20)        # last 20 lines of a run
+mcp__blq_mcp__output(ref="+1", grep="FAIL")        # regex-search captured output
+mcp__blq_mcp__info(ref="latest")                   # run metadata + events
 ```
 
-### Drill into issues
+### Drill in + compare
 ```
-mcp__blq_mcp__inspect(ref="latest")  # inspect a specific run
-mcp__blq_mcp__history()              # run history
-mcp__blq_mcp__diff()                 # compare runs
+mcp__blq_mcp__inspect(ref="test:1:3")              # event with log/source/git context
+mcp__blq_mcp__history(limit=20)                    # recent runs list
+mcp__blq_mcp__diff(run1=1, run2=2)                 # error fingerprint diff between runs
+mcp__blq_mcp__report(ref="latest")                 # markdown report (good for PRs/CI)
+mcp__blq_mcp__query(sql="SELECT * FROM blq_load_events() WHERE ...")  # SQL over events
+mcp__blq_mcp__ci_check(baseline="main")            # regression check vs baseline
 ```
 
 ## Important rules
