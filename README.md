@@ -383,6 +383,27 @@ duckdb -c "SELECT extension_name, installed FROM duckdb_extensions() WHERE exten
 blq --version && jetsam --version && fledgling --version && squackit --version && kibitzer --version
 ```
 
+### Suite health
+
+Three scripts in `scripts/` keep the suite honest. They address the failure modes that bite hardest in practice — installs that silently break, SKILL.md descriptions that drift from the live MCP schema, and skill umbrellas whose trigger language doesn't match how you actually phrase requests.
+
+```bash
+# Run all three (recommended at session start, or any time the suite feels off):
+scripts/retritis_health.sh
+
+# Or individually:
+scripts/retritis_doctor.py              # installs + MCP server spawn + SKILL.md presence
+scripts/skill_drift_lint.py             # SKILL.md ↔ live MCP tool schema
+scripts/trigger_analysis.py --recent 7  # Skill invocation rates from recent transcripts
+
+# Repair stale .pth files in place (e.g. after a mount move):
+scripts/retritis_doctor.py --fix
+```
+
+Exit codes follow a consistent convention: `0` = all green, `1` = hard failure (hallucination, broken install, BYPASSED plugin), `2` = warnings only.
+
+The `quality` GitHub Actions workflow runs `skill_drift_lint.py` on every PR that touches a SKILL.md or .mcp.json — so SKILL.md content can't drift away from the underlying tool schemas without being caught.
+
 ---
 
 ## Clinical examples

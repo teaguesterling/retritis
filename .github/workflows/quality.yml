@@ -1,0 +1,101 @@
+name: quality
+
+# Drift-lint gate: every PR + push to main is checked for SKILL.md ↔ MCP tool
+# schema accuracy across the suite. A hallucination — a SKILL.md referencing a
+# tool that doesn't exist in the live MCP server — fails the build.
+#
+# Local-only checks (retritis_doctor.py and trigger_analysis.py) are *not*
+# run here because:
+#   - doctor's editable-install audit checks the dev's ~/.local venv state;
+#     that's a per-machine concern, not a repo concern.
+#   - trigger_analysis needs Claude Code transcripts under ~/.claude/projects
+#     which aren't committed to the repo.
+#
+# Run both locally via:   scripts/retritis_health.sh
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "plugins/**/skills/**/SKILL.md"
+      - "plugins/**/.mcp.json"
+      - "scripts/skill_drift_lint.py"
+      - ".github/workflows/quality.yml"
+  pull_request:
+    paths:
+      - "plugins/**/skills/**/SKILL.md"
+      - "plugins/**/.mcp.json"
+      - "scripts/skill_drift_lint.py"
+  workflow_dispatch: {}
+
+jobs:
+  skill-drift-lint:
+    name: SKILL.md ↔ MCP tool schema drift
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout retritis
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install MCP client + ecosystem deps
+        run: |
+          python -m pip install --upgrade pip
+          # mcp client is needed to spawn each plugin's server and call tools/list.
+          # fastmcp is what most plugins use to implement the server side.
+          pip install "mcp>=1.0" fastmcp
+
+      - name: Clone + install plugin sources (editable)
+        # Editable installs mean the lint sees the same code paths a dev does.
+        # If a plugin's repo is private or moves, add a fallback to
+        # `pip install <package>` from PyPI.
+        env:
+          ORG: teaguesterling
+        run: |
+          set -euo pipefail
+          mkdir -p sources
+          for entry in \
+              "jetsam:jetsam" \
+              "blq:blq-cli" \
+              "fledgling:fledgling" \
+              "squackit:squackit" \
+              "lackpy:lackpy" \
+              "kibitzer:kibitzer" \
+              "pluckit:pluckit"; do
+              local_name="${entry%%:*}"
+              repo_name="${entry##*:}"
+              dest="sources/$local_name"
+              echo "::group::clone+install $local_name (${ORG}/${repo_name})"
+              if git clone --depth=1 "https://github.com/${ORG}/${repo_name}.git" "$dest" 2>/dev/null; then
+                  pip install -e "$dest" || echo "::warning::$local_name editable install failed; lint may degrade"
+              else
+                  echo "::warning::could not clone ${ORG}/${repo_name}; skipping (private repo? renamed?)"
+              fi
+              echo "::endgroup::"
+          done
+
+      - name: Run skill drift lint
+        # The script exits non-zero on hallucinations only; it tolerates
+        # SKILL.md tool mentions that are merely undocumented (warnings).
+        # Some plugins may fail to introspect in CI (private repos not cloned,
+        # different OS quirks). The script reports those as notes, not fails.
+        run: |
+          python scripts/skill_drift_lint.py
+
+      - name: Run skill drift lint (JSON, for artifacts)
+        if: always()
+        run: |
+          python scripts/skill_drift_lint.py --json > drift-report.json || true
+
+      - name: Upload drift report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: drift-report
+          path: drift-report.json
+          if-no-files-found: ignore
