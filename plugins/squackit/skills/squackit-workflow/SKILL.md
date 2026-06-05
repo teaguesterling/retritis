@@ -28,9 +28,9 @@ Use these squackit MCP tools:
 | Instead of... | Use squackit |
 |---|---|
 | `grep -r "def foo"` / `grep -r "class Bar"` | `find_names` with name pattern + node-type selector |
-| `grep -rn "import X"` then trace usages | `find_callers` for direct caller resolution |
-| Multiple greps to find where a symbol is *defined* (not just mentioned) | `find_definitions` (cross-file, AST-aware) |
-| Reading entire files to understand structure | `code_structure` (hierarchical, depth-controlled) |
+| `grep -rn "import X"` then trace usages | `call_graph` for call relationships within a file pattern, or `investigate(name)` for callers of a specific symbol |
+| Multiple greps to find where a symbol is *defined* (not just mentioned) | `find(source, selector=".def#name")` or `investigate(name)` for cross-file resolution |
+| Reading entire files to understand structure | `project_overview` for language counts, then `find(source, selector=".cls")` / `find_names(source, selector=".fn")` for the hierarchy |
 | Reading the whole project to orient | `project_overview` |
 | `grep -rl` to find files matching a pattern | `find` with structural selectors |
 | Reading a doc file front-to-back | `doc_outline` / `read_doc_section` |
