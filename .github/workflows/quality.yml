@@ -78,14 +78,31 @@ jobs:
               repo_name="${entry##*:}"
               dest="sources/$local_name"
               echo "::group::clone+install $local_name (${ORG}/${repo_name})"
-              if git clone --depth=1 "https://github.com/${ORG}/${repo_name}.git" "$dest" 2>/dev/null; then
-                  # --no-deps on the second wave would skip the editable wave's
-                  # versions; instead let pip resolve, since the editable ones
-                  # are already installed they'll satisfy the version pins.
-                  pip install -e "$dest" || echo "::warning::$local_name editable install failed; lint may degrade"
-              else
+              if ! git clone --depth=1 "https://github.com/${ORG}/${repo_name}.git" "$dest" 2>/dev/null; then
                   echo "::warning::could not clone ${ORG}/${repo_name}; skipping (private repo? renamed?)"
+                  echo "::endgroup::"
+                  continue
               fi
+              # Monorepo handling: lackpy ships `lackpy-lang` as a sub-package
+              # under packages/. Install nested pyprojects FIRST so the parent
+              # install can find its sibling dep without going to PyPI.
+              if [ -d "$dest/packages" ]; then
+                  for sub in "$dest"/packages/*/pyproject.toml; do
+                      [ -f "$sub" ] || continue
+                      sub_dir="$(dirname "$sub")"
+                      echo "  nested: $sub_dir"
+                      pip install -e "$sub_dir" || echo "::warning::nested $sub_dir install failed"
+                  done
+              fi
+              # Some plugins pin newer versions of their internal deps than
+              # what's on PyPI (e.g. squackit pins fledgling-mcp>=0.10 while
+              # the main branch on GH is still 0.9). `--no-deps` lets the
+              # editable install land even when pip can't resolve the pin;
+              # the runtime then picks up whichever editable version is
+              # installed (which is the latest source).
+              pip install -e "$dest" --no-deps \
+                  || pip install -e "$dest" \
+                  || echo "::warning::$local_name editable install failed; lint may degrade"
               echo "::endgroup::"
           done
           # Sanity: show what entry-point scripts ended up in PATH.
