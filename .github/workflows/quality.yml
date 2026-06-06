@@ -94,15 +94,17 @@ jobs:
                       pip install -e "$sub_dir" || echo "::warning::nested $sub_dir install failed"
                   done
               fi
-              # Some plugins pin newer versions of their internal deps than
-              # what's on PyPI (e.g. squackit pins fledgling-mcp>=0.10 while
-              # the main branch on GH is still 0.9). `--no-deps` lets the
-              # editable install land even when pip can't resolve the pin;
-              # the runtime then picks up whichever editable version is
-              # installed (which is the latest source).
-              pip install -e "$dest" --no-deps \
-                  || pip install -e "$dest" \
-                  || echo "::warning::$local_name editable install failed; lint may degrade"
+              # Try a normal install first so runtime deps land. Fall back to
+              # --no-deps when pip can't satisfy a version pin against an
+              # earlier-installed editable (e.g. squackit pins
+              # fledgling-mcp>=0.10 while the main branch on GH is still
+              # 0.9). The editable plugin code IS at the pinned version
+              # source-wise, even when its setup metadata says otherwise.
+              if ! pip install -e "$dest" 2>&1 | tee /tmp/pip-$local_name.log | tail -20; then
+                  echo "::warning::$local_name regular install failed; retrying --no-deps"
+                  pip install -e "$dest" --no-deps \
+                      || echo "::warning::$local_name editable install failed entirely; lint may degrade"
+              fi
               echo "::endgroup::"
           done
           # Sanity: show what entry-point scripts ended up in PATH.
