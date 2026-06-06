@@ -52,32 +52,48 @@ jobs:
 
       - name: Clone + install plugin sources (editable)
         # Editable installs mean the lint sees the same code paths a dev does.
-        # If a plugin's repo is private or moves, add a fallback to
-        # `pip install <package>` from PyPI.
+        # Install order matters: pluckit + fledgling are deps of squackit, so
+        # they need to land FIRST as editable; otherwise pip pulls older
+        # versions from PyPI to satisfy squackit's pin and the editable
+        # installs become metadata-only stubs that don't expose newer APIs
+        # like fledgling's public Connection.con accessor.
         env:
           ORG: teaguesterling
         run: |
           set -euo pipefail
           mkdir -p sources
-          for entry in \
-              "jetsam:jetsam" \
-              "blq:blq-cli" \
-              "fledgling:fledgling" \
-              "squackit:squackit" \
-              "lackpy:lackpy" \
-              "kibitzer:kibitzer" \
-              "pluckit:pluckit"; do
+          # First wave: leaves (no inter-plugin deps).
+          # Second wave: consumers of fledgling/pluckit.
+          ORDER=(
+              "pluckit:pluckit"
+              "fledgling:fledgling"
+              "jetsam:jetsam"
+              "blq:blq-cli"
+              "kibitzer:kibitzer"
+              "lackpy:lackpy"
+              "squackit:squackit"
+          )
+          for entry in "${ORDER[@]}"; do
               local_name="${entry%%:*}"
               repo_name="${entry##*:}"
               dest="sources/$local_name"
               echo "::group::clone+install $local_name (${ORG}/${repo_name})"
               if git clone --depth=1 "https://github.com/${ORG}/${repo_name}.git" "$dest" 2>/dev/null; then
+                  # --no-deps on the second wave would skip the editable wave's
+                  # versions; instead let pip resolve, since the editable ones
+                  # are already installed they'll satisfy the version pins.
                   pip install -e "$dest" || echo "::warning::$local_name editable install failed; lint may degrade"
               else
                   echo "::warning::could not clone ${ORG}/${repo_name}; skipping (private repo? renamed?)"
               fi
               echo "::endgroup::"
           done
+          # Sanity: show what entry-point scripts ended up in PATH.
+          echo "::group::installed plugin entry points"
+          for cmd in jetsam blq fledgling-mcp squackit lackpyctl lackpy kibitzer; do
+              which "$cmd" 2>/dev/null && "$cmd" --version 2>/dev/null | head -1 || echo "  $cmd: NOT FOUND in PATH"
+          done
+          echo "::endgroup::"
 
       - name: Run skill drift lint
         # The script exits non-zero on hallucinations only; it tolerates
