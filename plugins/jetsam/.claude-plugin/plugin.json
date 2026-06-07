@@ -1,7 +1,7 @@
 {
   "name": "jetsam",
   "description": "Git workflow accelerator with MCP server, agent routing instructions, and safety hooks for Claude Code",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "author": {
     "name": "Teague Sterling",
     "email": "teaguesterling@users.noreply.github.com"

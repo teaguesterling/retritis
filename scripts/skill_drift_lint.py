@@ -57,6 +57,15 @@ DISABLED_PLUGINS = {"kibitzer"}
 # special env). None today; reserved for future opt-out.
 SKIP_MCP_SPAWN: set[str] = set()
 
+# Verb names that appear as backticked `verb(` inside structured rows but are
+# example expressions in documentation, not tool claims. The soft-miss scanner
+# (CELL_VERB_RE over table/bullet rows) can't tell `db.connect()` in a selector
+# doc from a routing-table entry, so we suppress these known false positives.
+# Soft misses are warnings-only, so the blast radius is just cleaner output.
+#   connect, getattr — squackit selector docs explain call-receiver matching
+#                      with `duckdb.connect()` / `getattr(x, 'method')()`.
+SOFT_MISS_IGNORE = {"connect", "getattr"}
+
 
 @dataclass
 class PluginFinding:
@@ -202,7 +211,7 @@ async def lint_plugin(plugin: str) -> PluginFinding:
     finding.hallucinations = sorted(canonical - real)
     # Soft hits: routing-table mentions that don't match. Could be hallucinations
     # OR could be third-party verb mentions (rare). Reported as warnings.
-    finding.soft_misses = sorted((soft - canonical) - real)
+    finding.soft_misses = sorted(((soft - canonical) - real) - SOFT_MISS_IGNORE)
     # Real tools not mentioned anywhere in canonical OR soft sets.
     finding.missing = sorted(real - canonical - soft)
     return finding

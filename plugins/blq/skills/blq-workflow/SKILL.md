@@ -1,7 +1,7 @@
 ---
 name: blq-workflow
 description: All build, test, and CI operations — capture output, query later. Triggers on "run the tests", "build it", "rebuild", "what errored", "check lint", "run typecheck", "what was the test output", "diff against the previous run", "what's failing in CI". Route through blq MCP tools instead of `pytest`/`make`/`cargo`/`npm` through Bash, because blq captures + indexes output for query without re-running, extracts structured errors (no manual grep), and tracks run history. NO shell pipes — run first, then filter with `output(grep=..., tail=...)`. Use `commands()` to list registered build/test/lint/typecheck targets before running.
-version: 1.0.0
+version: 1.0.1
 ---
 
 # blq — Build Log Query
@@ -38,6 +38,7 @@ mcp__blq_mcp__run(command="test")                 # run a registered command
 mcp__blq_mcp__run(command="test", lines="+20-")   # run and return last 20 lines inline
 mcp__blq_mcp__exec(command="pytest -k foo")       # ad-hoc command (no pipes/redirects)
 mcp__blq_mcp__register_command(name="lint", cmd="ruff check src/")  # register new
+mcp__blq_mcp__unregister_command(name="lint")     # remove a registered command
 ```
 
 ### Analyze results
@@ -58,6 +59,13 @@ mcp__blq_mcp__diff(run1=1, run2=2)                 # error fingerprint diff betw
 mcp__blq_mcp__report(ref="latest")                 # markdown report (good for PRs/CI)
 mcp__blq_mcp__query(sql="SELECT * FROM blq_load_events() WHERE ...")  # SQL over events
 mcp__blq_mcp__ci_check(baseline="main")            # regression check vs baseline
+mcp__blq_mcp__ci_generate(shell="bash")            # emit standalone CI shell scripts from registered commands
+```
+
+### Housekeeping
+```
+mcp__blq_mcp__sandbox_info()                       # sandbox spec + world-coupling grade per command
+mcp__blq_mcp__clean(mode="prune", days=30, confirm=True)  # cleanup: data/prune/schema/full (confirm=True required)
 ```
 
 ## Important rules

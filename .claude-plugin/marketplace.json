@@ -9,13 +9,13 @@
       "name": "blq",
       "source": "./plugins/blq",
       "description": "Build Log Query \u2014 stop copy-pasting terminal output into chat",
-      "version": "1.0.0"
+      "version": "1.0.1"
     },
     {
       "name": "jetsam",
       "source": "./plugins/jetsam",
       "description": "Git workflow accelerator \u2014 save, sync, ship without the five-step dance",
-      "version": "1.0.0"
+      "version": "1.0.1"
     },
     {
       "name": "fledgling",

@@ -1,7 +1,7 @@
 ---
 name: jetsam-workflow
 description: Use this skill for ALL git and GitHub workflow operations. Triggers on commit/save, push/sync, ship, release/tag, open or merge PR, check CI, manage issues, start/switch/finish a branch, or anything phrased like "ship it", "bump and tag", "merge when green", "release v...". Route through jetsam workflow verbs (save / sync / ship / release / start / switch / finish / tidy / checks) — NOT raw `git`/`gh` via Bash and NOT the low-level `mcp__jetsam__git` passthrough. Workflow verbs return plans you confirm() before they execute, catching mistakes before history is written. Use the `git` passthrough only when no workflow verb fits.
-version: 1.0.0
+version: 1.0.1
 ---
 
 # Jetsam Git Workflow
@@ -13,37 +13,43 @@ tools instead of running git or gh commands through Bash.
 
 - **Workflow operations** (save, sync, ship, etc.) return execution plans.
   Review the plan, then call `confirm()` to execute.
+- **Plan lifecycle**: a returned plan can be re-displayed with
+  `mcp__jetsam__show_plan(id=...)`, adjusted with
+  `mcp__jetsam__modify_plan(id=..., ...)` before confirming, or discarded
+  with `mcp__jetsam__cancel(id=...)` to abort it without touching history.
 - **Query operations** (status, log, diff, etc.) return results directly.
 - **All errors** return `{error, message, recoverable}` dicts.
 
-## Targeting a specific repo: the `cwd` parameter
+## Targeting a non-cwd repo: use `cwd=`, NOT `git -C`
 
 Every workflow verb (`status`, `save`, `sync`, `ship`, `start`, `finish`,
 `tidy`, `release`, `log`, `diff`, `switch`, `pr_*`, `issues`, `issue_close`,
-`checks`) accepts a `cwd: str | None = None` parameter (as of jetsam
-`33d5869`, 2026-06-06). When set, the verb operates on that repo; when
-omitted it falls back to the process cwd.
+`checks`) accepts `cwd: str | None = None` (as of jetsam `33d5869`,
+2026-06-06). Set it to operate on another repo; omit it to use the process
+cwd.
+
+**To add/commit/push in a different repo, pass `cwd=` to the workflow verb —
+do NOT fall through to `mcp__jetsam__git(args=["-C", path, ...])`.** The
+passthrough skips the plan/confirm safety and the structured state the
+workflow verbs return; reaching for `git -C` is the single most common way
+this skill gets bypassed.
 
 ```
-# Target a non-cwd repo directly:
+# Cross-repo work — the right way:
 mcp__jetsam__status(cwd="/home/teague/Projects/other")
-mcp__jetsam__save(message="fix", cwd="/home/teague/Projects/other")
-mcp__jetsam__sync(cwd="/home/teague/Projects/other")
+mcp__jetsam__save(message="fix", cwd="/home/teague/Projects/other")   # not: git -C other add && commit
+mcp__jetsam__sync(cwd="/home/teague/Projects/other")                  # not: git -C other push
+mcp__jetsam__ship(message="fix", cwd="/home/teague/Projects/other")   # not: git -C other add+commit+push
 ```
 
-**If you're on an older jetsam** that silently drops the `cwd` arg, you'll
-see status for the wrong repo. Symptom: the verb returns a state with a
-`repo_root` that doesn't match the path you passed. Workaround: use the
-`mcp__jetsam__git` passthrough with `-C <path>`:
+The `mcp__jetsam__git` passthrough (which supports `-C <path>`) is the
+fallback ONLY for operations no workflow verb covers: LFS hook bypass with
+`--no-verify`, admin-bypass merges, force-with-lease pushes, cross-fork
+pushes, heredoc commit bodies. If a verb covers it, use the verb with `cwd=`.
 
-```
-mcp__jetsam__git(args=["-C", "/home/teague/Projects/other", "log", "--oneline", "-5"])
-```
-
-The `git` passthrough has always supported `-C`; it's still useful for
-operations no workflow verb covers (LFS hook bypass with `--no-verify`,
-admin-bypass merges, force-with-lease pushes, cross-fork pushes,
-heredoc commit bodies).
+**Stale-jetsam symptom:** if `cwd=` is silently dropped, the verb returns a
+state whose `repo_root` doesn't match the path you passed — upgrade jetsam
+rather than reverting to `git -C`.
 
 ## Routing table
 
