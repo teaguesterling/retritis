@@ -111,8 +111,10 @@ README.md                         — public-facing
   plan you `confirm()`; that's the safety value.
 - **The `mcp__plugin_jetsam_jetsam__git` passthrough** is the fallback
   for edge cases (LFS, force-with-lease, heredoc messages). Use it when
-  a workflow verb doesn't fit, AND when state-hash races break the plan
-  flow (which happens occasionally — see jetsam known-issue).
+  a workflow verb doesn't fit. (The state-hash race that used to make
+  `sync`/`release`/`tidy` fail `stale_plan` on every `confirm()` in repos
+  that don't gitignore `.jetsam/` was fixed in jetsam v1.1.1, #12 — no
+  longer a reason to reach for the passthrough on ≥1.1.1.)
 - **Signed commits**: write the message into a heredoc when needed; hand
   the bash command to the user; you can't sign yourself.
 
