@@ -1,0 +1,13 @@
+{
+  "name": "test-failure-investigator",
+  "description": "Orchestration skill that walks a Claude Code agent through a multi-tool, root-cause investigation when a test fails — jetsam → blq → squackit → lackpy → subagent → jetsam → blq, iterated until green",
+  "version": "1.0.0",
+  "author": {
+    "name": "Teague Sterling",
+    "email": "teaguesterling@users.noreply.github.com"
+  },
+  "homepage": "https://github.com/teaguesterling/retritis",
+  "repository": "https://github.com/teaguesterling/retritis",
+  "license": "MIT",
+  "keywords": ["test-failure", "debugging", "orchestration", "workflow", "skill"]
+}

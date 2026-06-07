@@ -52,6 +52,12 @@
       "source": "./plugins/umwelt",
       "description": "Declarative agent-permission policy (CSS-like .umw)",
       "version": "1.0.0"
+    },
+    {
+      "name": "test-failure-investigator",
+      "source": "./plugins/test-failure-investigator",
+      "description": "Orchestration skill — jetsam→blq→squackit→lackpy→subagent loop for root-causing test failures",
+      "version": "1.0.0"
     }
   ]
 }
