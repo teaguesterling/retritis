@@ -16,26 +16,34 @@ tools instead of running git or gh commands through Bash.
 - **Query operations** (status, log, diff, etc.) return results directly.
 - **All errors** return `{error, message, recoverable}` dicts.
 
-## Important: workflow tools target the current working directory
+## Targeting a specific repo: the `cwd` parameter
 
-Both workflow verbs (`status`, `save`, `sync`, `ship`, etc.) and query tools
-(`log`, `diff`) operate on the **current working directory's** git repo.
-They do NOT accept a `-C` / `cwd` / `path` argument — passing one is silently
-ignored and you get results for the wrong repo.
-
-**When you need cross-repo operations** (typing inside repo A but want to act
-on repo B), use the `mcp__jetsam__git` passthrough with `-C <path>` instead:
+Every workflow verb (`status`, `save`, `sync`, `ship`, `start`, `finish`,
+`tidy`, `release`, `log`, `diff`, `switch`, `pr_*`, `issues`, `issue_close`,
+`checks`) accepts a `cwd: str | None = None` parameter (as of jetsam
+`33d5869`, 2026-06-06). When set, the verb operates on that repo; when
+omitted it falls back to the process cwd.
 
 ```
-# WRONG — silently runs against cwd, not /home/teague/Projects/other
-mcp__jetsam__status(args=["-C", "/home/teague/Projects/other"])
+# Target a non-cwd repo directly:
+mcp__jetsam__status(cwd="/home/teague/Projects/other")
+mcp__jetsam__save(message="fix", cwd="/home/teague/Projects/other")
+mcp__jetsam__sync(cwd="/home/teague/Projects/other")
+```
 
-# RIGHT — passthrough explicitly targets the path
+**If you're on an older jetsam** that silently drops the `cwd` arg, you'll
+see status for the wrong repo. Symptom: the verb returns a state with a
+`repo_root` that doesn't match the path you passed. Workaround: use the
+`mcp__jetsam__git` passthrough with `-C <path>`:
+
+```
 mcp__jetsam__git(args=["-C", "/home/teague/Projects/other", "log", "--oneline", "-5"])
 ```
 
-This is one of the legitimate uses of the passthrough — workflow verbs
-intentionally bind to cwd to keep their plan-state coherent.
+The `git` passthrough has always supported `-C`; it's still useful for
+operations no workflow verb covers (LFS hook bypass with `--no-verify`,
+admin-bypass merges, force-with-lease pushes, cross-fork pushes,
+heredoc commit bodies).
 
 ## Routing table
 
