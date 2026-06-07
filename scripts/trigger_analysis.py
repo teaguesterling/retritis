@@ -38,6 +38,12 @@ TRANSCRIPT_ROOT_DEFAULT = Path.home() / ".claude/projects"
 # Plugins we care about (the retritis MCP families). Adjust if more land.
 KNOWN_PLUGINS = ["jetsam", "blq", "fledgling", "squackit", "lackpy", "kibitzer", "agent_riggs"]
 
+# Non-retritis MCP servers that show up in scratch/demo sessions (e.g. the
+# `cosmic-mcp-hello` FastMCP example invoked from /tmp). They are not plugins;
+# filter them so they don't pollute the report. Unknown-but-real plugins are
+# still auto-discovered — only these named demos are dropped.
+IGNORED_PLUGINS = {"hello"}
+
 MCP_TOOL_RE = re.compile(r"^mcp__(?:plugin_)?(\w+?)(?:_\w+)?__(\w+)$")
 
 
@@ -130,7 +136,7 @@ def analyze(transcripts: list[Path]) -> dict[str, PluginStats]:
                     stats[target].skill_calls += 1
                 continue
             plugin, verb = classify_tool_call(name)
-            if plugin is None:
+            if plugin is None or plugin in IGNORED_PLUGINS:
                 continue
             # Normalize agent_riggs <-> agent-riggs
             key = "agent_riggs" if plugin in ("agent_riggs", "agentriggs") else plugin
