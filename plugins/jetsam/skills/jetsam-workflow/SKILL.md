@@ -78,6 +78,44 @@ Do NOT run git or gh commands through Bash. Use these JetSam MCP tools instead:
 | `gh release create` | `mcp__jetsam__release` |
 | Other git commands | `mcp__jetsam__git` (passthrough) |
 
+## Session config — `mcp__jetsam__config`
+
+Available in jetsam 1.1.2+ (pending release as of 2026-06-07; on
+`feat/config-endpoint` branch). In-memory only — wiped on server restart.
+
+```
+mcp__jetsam__config()                                    # read current
+mcp__jetsam__config(set={"active_root": "/path/to/repo"}) # update
+mcp__jetsam__config(reset=true)                          # revert to env-seed
+```
+
+**The `active_root` key is the cross-repo ergonomics shortcut.** Set it once
+and every workflow verb's `cwd=None` falls back to it instead of the
+server's process cwd. Explicit `cwd=...` on a single call still wins. For
+single cross-repo operations the per-call `cwd=` is still cleaner; for
+multi-step work in a non-default repo, `config(set={"active_root": X})` is
+the better path.
+
+Common keys (shared with squackit/blq when they get config):
+- `active_root` — fallback when verb's `cwd=` is omitted
+- `log_level` — debug | info | warn | error
+
+Jetsam-specific:
+- `default_sync_strategy` — rebase | merge
+- `default_base_branch` — override for "main"
+- `signing_required` — fail fast if GPG isn't configured
+- `auto_confirm_safe_verbs` — list of verbs that bypass `plan→confirm`
+
+Env-var seeding at MCP server launch (via `.mcp.json` env block):
+`JETSAM_ACTIVE_ROOT`, `JETSAM_LOG_LEVEL`, `JETSAM_DEFAULT_SYNC_STRATEGY`,
+`JETSAM_DEFAULT_BASE_BRANCH`, `JETSAM_SIGNING_REQUIRED`,
+`JETSAM_AUTO_CONFIRM_SAFE_VERBS`. These are read once at launch; the server
+holds the values in RAM. `config(reset=true)` reverts to those seed values,
+not hardcoded defaults.
+
+Validation is strict + atomic: unknown keys raise, invalid values raise,
+either way the in-memory config is left unchanged.
+
 ## Workflow patterns
 
 ### Save and ship (most common)
