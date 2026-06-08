@@ -159,14 +159,41 @@ same semantics; per-server keys (jetsam: `default_sync_strategy`,
 `signing_required`; squackit: `max_results_default`, `fts_cache_size`)
 fit cleanly without coupling.
 
+**Blq prototype shipped on `feat/config-endpoint` (2026-06-07, PR #44,
+merged at `1f92446`).** Pushed; pending next release.
+
+What landed:
+- `src/blq/runtime.py` (new) — `BlqRuntimeConfig` dataclass + same
+  `get_runtime()`/`update_runtime()`/`reset_runtime()` API as jetsam and
+  squackit, plus `resolve_storage_root()` helper.
+- `src/blq/serve.py` — new `config()` MCP tool; `_get_storage()` now
+  honors `active_root` by looking for `.bird/` there before falling
+  through to the cwd-walk.
+- `tests/test_runtime_config.py` (new, 22 tests, all green; full suite 1326 green).
+
+**Cross-server convention now validated on all three.** Same shape,
+same env-var pattern, same dataclass/singleton API. Common keys
+(`active_root`, `log_level`) carry consistent semantics. Per-server
+keys fit cleanly:
+- jetsam: `default_sync_strategy`, `default_base_branch`, `signing_required`,
+  `auto_confirm_safe_verbs`
+- squackit: `max_results_default`, `complexity_max_results_default`,
+  `fts_cache_size`
+- blq: `default_lines_window`, `default_history_limit`
+
+Blq's "careful separation" played out as designed: persistent state
+(run history, retention, registered commands, capture buffer) stayed
+in the DB; only true session knobs went in `config()`. The
+`capture_buffer_size` / `default_retention_days` keys from the original
+plan are deliberately NOT in `BlqRuntimeConfig` for this reason.
+
 Still to do (deferred):
 
-- **blq**: source TBD (check blq's MCP layer structure), tests. Careful
-  separation: persistent state stays in the DB; runtime knobs go in
-  `config()`.
-- **retritis**: `docs/CONFIG.md` (central convention doc) — write after the
-  shape's been validated in production for a couple of sessions.
+- **retritis**: `docs/CONFIG.md` (central convention doc) — write now
+  that the shape's been validated across all three servers.
 - **Per-server semantic enrichment**: jetsam should consume
   `default_sync_strategy` / `signing_required` (today they're knobs no
   workflow verb actually reads); squackit should consume
-  `max_results_default` (today it's a stored knob, not applied).
+  `max_results_default` (today it's a stored knob, not applied); blq
+  should consume `default_lines_window` / `default_history_limit` in
+  `run()` / `history()`.

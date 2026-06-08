@@ -68,6 +68,36 @@ mcp__blq_mcp__sandbox_info()                       # sandbox spec + world-coupli
 mcp__blq_mcp__clean(mode="prune", days=30, confirm=True)  # cleanup: data/prune/schema/full (confirm=True required)
 ```
 
+## Session config — `config()`
+
+Available in blq 1.0.1+ (PR #44 merged 2026-06-07; pending release).
+In-memory only — wiped on server restart. Persistent state (run history,
+retention, registered commands) stays in the DB.
+
+```
+mcp__blq_mcp__config()                                    # read current
+mcp__blq_mcp__config(set={"active_root": "/path/to/repo"}) # update
+mcp__blq_mcp__config(reset=true)                          # revert to env-seed
+```
+
+**The `active_root` key is the cross-repo ergonomics shortcut.** When set,
+`_get_storage()` looks for `.bird/` at that path before falling through
+to the cwd-walk. Lets you target a different workspace's logs in a
+multi-repo session.
+
+Common keys (shared with jetsam/squackit):
+- `active_root` — fallback for locating `.bird/` workspace
+- `log_level` — debug | info | warn | error
+
+Blq-specific:
+- `default_lines_window` — default for `run(lines=...)` when omitted
+- `default_history_limit` — default for `history(limit=...)`
+
+Env-var seeding at MCP server launch (via `.mcp.json` env block):
+`BLQ_ACTIVE_ROOT`, `BLQ_LOG_LEVEL`, `BLQ_DEFAULT_LINES_WINDOW`,
+`BLQ_DEFAULT_HISTORY_LIMIT`. Read once at launch; `config(reset=true)`
+reverts to these values.
+
 ## Important rules
 
 1. **Never use shell pipes** — run the command, then filter with `output()`
