@@ -27,7 +27,7 @@
       "name": "squackit",
       "source": "./plugins/squackit",
       "description": "Code intelligence MCP server \u2014 smart defaults, session caching, compound workflows",
-      "version": "1.0.0"
+      "version": "1.0.1"
     },
     {
       "name": "kibitzer",

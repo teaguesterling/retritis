@@ -1,7 +1,7 @@
 {
   "name": "squackit",
   "description": "Semi-QUalified Agent Companion Kit — code intelligence MCP server with smart defaults and session caching",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "author": {
     "name": "Teague Sterling",
     "email": "teaguesterling@users.noreply.github.com"
