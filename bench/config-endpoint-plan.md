@@ -187,13 +187,34 @@ in the DB; only true session knobs went in `config()`. The
 `capture_buffer_size` / `default_retention_days` keys from the original
 plan are deliberately NOT in `BlqRuntimeConfig` for this reason.
 
+**Semantic enrichment shipped 2026-06-07 (PR jetsam#15, squackit#7, blq merged direct to main).**
+The knobs are no longer stored-but-ignored — workflow verbs actually consume them now:
+
+- **jetsam**: `plan_sync()` on feature branches uses
+  `runtime.default_sync_strategy` as the fallback (was hardcoded "rebase").
+  `plan_save()`/`plan_ship()`/`plan_release()` fail fast when
+  `runtime.signing_required` is true but `commit.gpgsign` isn't enabled —
+  the returned plan has no execution steps and a clear remediation
+  warning. Explicit `strategy=` still wins.
+- **squackit**: `_register_tool` dispatch falls back to
+  `runtime.max_results_default` (for general tools) or
+  `runtime.complexity_max_results_default` (for `complexity`) when the
+  caller explicitly passes `max_results=None`. Static presentation-level
+  caps remain as the seed.
+- **blq**: `_resolve_command_lines()` falls through to
+  `runtime.default_lines_window` after the per-command config lookup
+  (empty string preserves the "no inline output" default).
+  `history(limit=None)` uses `runtime.default_history_limit` instead of
+  the hardcoded 20.
+
+Tests added across all three (7 jetsam + 3 squackit + 5 blq = 15
+consumption tests). Full suites green: jetsam 405 (one pre-existing
+test_state failure unrelated to this work), squackit 306, blq 1331.
+
 Still to do (deferred):
 
-- **retritis**: `docs/CONFIG.md` (central convention doc) — write now
-  that the shape's been validated across all three servers.
-- **Per-server semantic enrichment**: jetsam should consume
-  `default_sync_strategy` / `signing_required` (today they're knobs no
-  workflow verb actually reads); squackit should consume
-  `max_results_default` (today it's a stored knob, not applied); blq
-  should consume `default_lines_window` / `default_history_limit` in
-  `run()` / `history()`.
+- **retritis**: `docs/CONFIG.md` (central convention doc) — now overdue
+  since the shape is validated AND the semantic plumbing works end-to-end.
+- **`auto_confirm_safe_verbs`** in jetsam — added as a key but not yet
+  consumed by the MCP layer. Punted: bypassing plan→confirm is a real
+  behavior change worth its own design pass, not a quick wire-up.
