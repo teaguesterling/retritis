@@ -66,6 +66,18 @@ SKIP_MCP_SPAWN: set[str] = set()
 #                      with `duckdb.connect()` / `getattr(x, 'method')()`.
 SOFT_MISS_IGNORE = {"connect", "getattr"}
 
+# Tools a SKILL.md documents *ahead of* the tool's release: they aren't on the
+# live MCP server yet (or aren't in the released version), so the strict check
+# would flag them as hallucinations (SKILL claims it) or missing (server has
+# it, SKILL's prose mention slips past the parser). They're intentional
+# pre-documentation — list them here to downgrade to a visible "pending" note
+# instead of failing the gate. REMOVE the entry once the tool ships; if it's
+# still absent then, the strict check fires again, which is what you want.
+PENDING_TOOLS: dict[str, dict[str, str]] = {
+    "jetsam": {"config": "pending jetsam 1.1.2 (config-endpoint)"},
+    "squackit": {"config": "pending squackit 0.7 (config-endpoint)"},
+}
+
 
 @dataclass
 class PluginFinding:
@@ -73,6 +85,7 @@ class PluginFinding:
     hallucinations: list[str] = field(default_factory=list)
     soft_misses: list[str] = field(default_factory=list)
     missing: list[str] = field(default_factory=list)
+    pending: list[str] = field(default_factory=list)
     notes: list[str] = field(default_factory=list)
 
     @property
@@ -214,6 +227,17 @@ async def lint_plugin(plugin: str) -> PluginFinding:
     finding.soft_misses = sorted(((soft - canonical) - real) - SOFT_MISS_IGNORE)
     # Real tools not mentioned anywhere in canonical OR soft sets.
     finding.missing = sorted(real - canonical - soft)
+
+    # Pre-documented-but-unreleased tools: pull them out of hallucinations
+    # (SKILL claims a tool the live server lacks) and out of missing (server
+    # has it but it's pre-release), surfacing them as a non-failing "pending"
+    # note so the gate stays green while the exception stays auditable.
+    pend = PENDING_TOOLS.get(plugin, {})
+    if pend:
+        flagged = (set(finding.hallucinations) | set(finding.missing)) & pend.keys()
+        finding.pending = sorted(f"{t} — {pend[t]}" for t in flagged)
+        finding.hallucinations = [h for h in finding.hallucinations if h not in pend]
+        finding.missing = [m for m in finding.missing if m not in pend]
     return finding
 
 
@@ -238,7 +262,7 @@ def render_text(findings: list[PluginFinding]) -> tuple[str, int]:
     any_errors = False
     for f in findings:
         marker = "❌" if f.has_errors else "✅"
-        if not (f.hallucinations or f.soft_misses or f.missing or f.notes):
+        if not (f.hallucinations or f.soft_misses or f.missing or f.pending or f.notes):
             out.append(f"{marker} {f.name}: clean")
             continue
         out.append(f"{marker} {f.name}")
@@ -247,6 +271,8 @@ def render_text(findings: list[PluginFinding]) -> tuple[str, int]:
         if f.hallucinations:
             any_errors = True
             out.append(f"   • HALLUCINATIONS ({len(f.hallucinations)}): {', '.join(f.hallucinations)}")
+        if f.pending:
+            out.append(f"   • ⏳ pending release ({len(f.pending)}): {', '.join(f.pending)}")
         if f.soft_misses:
             out.append(f"   • soft misses ({len(f.soft_misses)}): {', '.join(f.soft_misses)}")
         if f.missing:
@@ -262,6 +288,7 @@ def render_json(findings: list[PluginFinding]) -> tuple[str, int]:
             "hallucinations": f.hallucinations,
             "soft_misses": f.soft_misses,
             "missing": f.missing,
+            "pending": f.pending,
             "notes": f.notes,
         }
         for f in findings
