@@ -75,7 +75,7 @@ SOFT_MISS_IGNORE = {"connect", "getattr"}
 # still absent then, the strict check fires again, which is what you want.
 PENDING_TOOLS: dict[str, dict[str, str]] = {
     "jetsam": {"config": "pending jetsam 1.1.2 (config-endpoint)"},
-    "squackit": {"config": "pending squackit 0.7 (config-endpoint)"},
+    # squackit:config removed — shipped in squackit 0.7.0 (2026-06-07).
 }
 
 

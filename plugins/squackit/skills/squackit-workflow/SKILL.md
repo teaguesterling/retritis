@@ -1,7 +1,7 @@
 ---
 name: squackit-workflow
 description: Code intelligence — the wrapper-layer over fledgling for everyday code search and structural understanding. Triggers on "find X in the code", "where is X defined", "show me what calls X", "what's the structure of this project", "outline this file/module", "what does X look like". USE THIS FIRST for any "find/where/who-calls/show-structure" question in source — squackit handles FTS, AST queries, caching, and per-root context that grep/find can't. Fall through to fledgling-workflow only for git diff/revision reads or Claude conversation history that squackit doesn't expose. NOT raw `grep -r`/`find -name`/`rg` via Bash — those skip the AST + FTS index that's the whole point.
-version: 1.0.1
+version: 1.0.2
 ---
 
 # squackit — code intelligence (the fledgling wrapper)
@@ -98,14 +98,12 @@ squackit caches per project root. To query a different repo:
 
 ## Session config — `config()`
 
-Available in squackit 0.7+ (PR #6 merged 2026-06-07; pending release).
-In-memory only — wiped on server restart.
+Available in squackit 0.7.0+ (released 2026-06-07). In-memory only — wiped
+on server restart.
 
-```
-config()                                    # read current
-config(set={"active_root": "/path/to/repo"}) # update
-config(reset=true)                          # revert to env-seed
-```
+- `config()` — read the current in-memory knobs.
+- `config(set={"active_root": "/path/to/repo"})` — update a knob.
+- `config(reset=true)` — revert to the env-seed values.
 
 **The `active_root` key is the cross-repo ergonomics shortcut.** When set,
 `investigate(name)` resolves scope as: explicit `path=` → `active_root` →
