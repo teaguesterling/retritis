@@ -141,14 +141,32 @@ Shape validated for resolutions in the original plan:
 5. **Cross-server keys**: kept as a documented convention (active_root,
    log_level present in jetsam; same names will be used in squackit/blq).
 
+**Squackit prototype shipped on `feat/config-endpoint` (2026-06-07, PR #6,
+merged at `6ca27e4`).** Pushed; pending next release.
+
+What landed:
+- `squackit/runtime.py` (new) — `SquackitRuntimeConfig` dataclass + same
+  `get_runtime()` / `update_runtime()` / `reset_runtime()` API as jetsam, plus
+  `resolve_scope_path()` helper (precedence: explicit → active_root → cwd).
+- `squackit/workflows.py` — new `config()` MCP tool registered via
+  `_add_workflow_tool`; `investigate()` now calls `resolve_scope_path()`
+  instead of `path or os.getcwd()`.
+- `tests/test_runtime_config.py` (new, 21 tests, all green; full suite 303 green).
+
+Cross-server convention validated: same shape works on both servers
+(jetsam + squackit). Common keys (`active_root`, `log_level`) carry the
+same semantics; per-server keys (jetsam: `default_sync_strategy`,
+`signing_required`; squackit: `max_results_default`, `fts_cache_size`)
+fit cleanly without coupling.
+
 Still to do (deferred):
 
-- **squackit**: `squackit/server.py` (+config tool, integrate with
-  `ProjectDefaults`), tests. Should map `active_root` → existing
-  `root=`/`path=` behavior so `config(set={"active_root": X})` makes those
-  optional, not redundant.
 - **blq**: source TBD (check blq's MCP layer structure), tests. Careful
   separation: persistent state stays in the DB; runtime knobs go in
   `config()`.
 - **retritis**: `docs/CONFIG.md` (central convention doc) — write after the
   shape's been validated in production for a couple of sessions.
+- **Per-server semantic enrichment**: jetsam should consume
+  `default_sync_strategy` / `signing_required` (today they're knobs no
+  workflow verb actually reads); squackit should consume
+  `max_results_default` (today it's a stored knob, not applied).

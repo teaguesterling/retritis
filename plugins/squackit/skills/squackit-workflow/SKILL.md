@@ -1,7 +1,7 @@
 ---
 name: squackit-workflow
 description: Code intelligence — the wrapper-layer over fledgling for everyday code search and structural understanding. Triggers on "find X in the code", "where is X defined", "show me what calls X", "what's the structure of this project", "outline this file/module", "what does X look like". USE THIS FIRST for any "find/where/who-calls/show-structure" question in source — squackit handles FTS, AST queries, caching, and per-root context that grep/find can't. Fall through to fledgling-workflow only for git diff/revision reads or Claude conversation history that squackit doesn't expose. NOT raw `grep -r`/`find -name`/`rg` via Bash — those skip the AST + FTS index that's the whole point.
-version: 1.0.0
+version: 1.0.1
 ---
 
 # squackit — code intelligence (the fledgling wrapper)
@@ -52,7 +52,7 @@ Use these squackit MCP tools:
 ### Understand structure
 - `project_overview(root?)` — file counts by language for the project.
 - `explore(path?)` — first-contact briefing: languages, key defs, docs, recent activity.
-- `investigate(name, file_pattern?)` — deep dive on a function or symbol: definition + source + callers + callees.
+- `investigate(name, file_pattern?, path?)` — deep dive on a function or symbol: definition + source + callers + callees. Scoped to the process cwd by default; pass `path="/some/repo"` to target another repo root, or `file_pattern` to override the glob (squackit ≥0.6.0).
 - `complexity(source, selector, max_results?)` — AST nodes matching selector, ranked by complexity. `source` + `selector` required, NOT a path.
 - `call_graph(file_pattern?)` — call relationships within a file pattern (NOT a single symbol).
 
@@ -96,6 +96,36 @@ squackit caches per project root. To query a different repo:
 - Most search tools accept `root=<dir>` to FTS that repo (LRU-cached)
 - The cache stays warm during a session — repeated queries in the same root are cheap
 
+## Session config — `config()`
+
+Available in squackit 0.7+ (PR #6 merged 2026-06-07; pending release).
+In-memory only — wiped on server restart.
+
+```
+config()                                    # read current
+config(set={"active_root": "/path/to/repo"}) # update
+config(reset=true)                          # revert to env-seed
+```
+
+**The `active_root` key is the cross-repo ergonomics shortcut.** When set,
+`investigate(name)` resolves scope as: explicit `path=` → `active_root` →
+`os.getcwd()`. Avoids threading `path=` through every call in cross-repo
+sessions.
+
+Common keys (shared with jetsam):
+- `active_root` — fallback for tools that take `path=` / `root=`
+- `log_level` — debug | info | warn | error
+
+Squackit-specific:
+- `max_results_default` — token-aware truncation cap
+- `complexity_max_results_default`
+- `fts_cache_size` — LRU size for per-root FTS
+
+Env-var seeding at MCP server launch (via `.mcp.json` env block):
+`SQUACKIT_ACTIVE_ROOT`, `SQUACKIT_LOG_LEVEL`, `SQUACKIT_MAX_RESULTS_DEFAULT`,
+`SQUACKIT_COMPLEXITY_MAX_RESULTS_DEFAULT`, `SQUACKIT_FTS_CACHE_SIZE`. Read
+once at launch; `config(reset=true)` reverts to these values.
+
 ## Tips
 
 - For "what's in this codebase?" → `project_overview()` for language counts, then `find_names(source, selector=".cls")` / `find_names(source, selector=".fn")` for top-level structure.
@@ -108,7 +138,7 @@ squackit caches per project root. To query a different repo:
 ## Known limitations (verified empirically 2026-06-04)
 
 - **`explore` "Key Definitions" can silently fail** on some projects (returns "(could not load)" with no reason). Workaround: fall through to `find_names(source, selector=".fn")` + `complexity(source, selector=".fn", max_results=20)`.
-- **`investigate(name)` scopes to cwd by default** (fixed in squackit cf36894); pass `path="/some/repo"` to investigate symbols in a different project, or pass an explicit `file_pattern` glob to override. Before the fix, the default was the global registry and a substring-named query like `investigate("main")` would substring-match "remain" / "domain" / "main" across every indexed project. If you see hits outside your project on a current version, your squackit install pre-dates the fix.
+- **`investigate(name)` scopes to the process cwd by default** (requires squackit ≥0.6.0, the release carrying cf36894); pass `path="/some/repo"` to investigate symbols in a different project, or an explicit `file_pattern` glob to override the scope. On squackit <0.6.0 the default was the global registry, so a substring-named query like `investigate("main")` would substring-match "remain" / "domain" / "main" across every indexed project — if you still see cross-project hits, upgrade to ≥0.6.0.
 - **`investigate` source can truncate mid-function** without a "...more" marker. The Definition table's `end_line` is authoritative; if the Source section ends before that, fetch the remainder with `read_source(file_path, lines="<end>-")`.
 - **Selectors qualify call receivers via `[receiver=X]`.** `.call#connect` alone matches both `duckdb.connect()` and `db.connect()` because the AST schema only binds the method name. To disambiguate, use the receiver attribute: `.call#connect[receiver="duckdb"]` matches only `duckdb.connect(...)`. Operators: `=` (exact), `*=` (contains), `^=` (starts with), `$=` (ends with). Bare `connect()` (no receiver) has receiver `""` and never matches a non-empty value. Receivers containing parens like `(complex).method()` and computed receivers like `getattr(x, 'method')()` are not matched by the receiver filter.
 - **`find` rows have ~15 verbose AST columns** (node_id, semantic_type, flags, depth, sibling_index, children_count, etc.) that aren't usually relevant to the caller. The signal lives in `file_path`, `start_line`, `name`, and `peek`.
