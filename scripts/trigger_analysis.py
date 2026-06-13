@@ -4,8 +4,14 @@
 The premise: a skill is doing its job when sessions invoke it via the Skill
 tool BEFORE reaching for the underlying MCP tool family. When sessions only
 ever call `mcp__plugin_X__verb` and never `Skill(X-workflow)`, the skill is
-loaded but its routing table never reaches the model — exactly today's
-failure mode (0 Skill invocations / 107 jetsam-git proxy calls).
+loaded but its routing table never reaches the model.
+
+The bypass signal is measured against *routed* MCP calls — explicit
+passthrough/escape-hatch verbs (e.g. jetsam's `git` proxy for cross-repo
+`git -C`) are excluded, since using them is not a routing failure. And the
+hard signal keys on skill_calls == 0 (the skill umbrella never reaching the
+model), not on a ratio floor: a plugin whose skill *does* fire isn't BYPASSED
+just because one Skill load covers a high volume of downstream tool calls.
 
 This script ingests one or more transcript JSONL files, counts tool calls
 per family, and reports the Skill:MCP ratio per plugin. A persistently low
@@ -44,6 +50,16 @@ KNOWN_PLUGINS = ["jetsam", "blq", "fledgling", "squackit", "lackpy", "kibitzer",
 # still auto-discovered — only these named demos are dropped.
 IGNORED_PLUGINS = {"hello"}
 
+# Verbs that are explicit low-level passthrough / escape-hatch tools rather than
+# skill-routed workflow verbs. Using them is NOT a sign the SKILL.md routing
+# failed — they exist precisely for cases the workflow verbs don't cover (e.g.
+# jetsam's `git` proxy for cross-repo `git -C`). They are excluded from the
+# bypass-ratio denominator so a heavily-passthrough plugin isn't mislabeled
+# BYPASSED; they still appear in the MCP totals for transparency.
+PASSTHROUGH_VERBS: dict[str, set[str]] = {
+    "jetsam": {"git"},
+}
+
 MCP_TOOL_RE = re.compile(r"^mcp__(?:plugin_)?(\w+?)(?:_\w+)?__(\w+)$")
 
 
@@ -55,30 +71,44 @@ class PluginStats:
     mcp_by_verb: dict[str, int] = field(default_factory=lambda: defaultdict(int))
 
     @property
-    def ratio(self) -> float:
-        """Skill calls per MCP call. Lower means the skill umbrella is being skipped.
+    def passthrough_calls(self) -> int:
+        """MCP calls to explicit passthrough/escape-hatch verbs (see
+        PASSTHROUGH_VERBS) — excluded from the bypass-ratio denominator."""
+        verbs = PASSTHROUGH_VERBS.get(self.name, set())
+        return sum(n for v, n in self.mcp_by_verb.items() if v in verbs)
 
-        ratio = 0       → skill never fired, all access was direct
-        ratio = 1       → exactly one Skill per MCP (overkill, but discoverable)
+    @property
+    def routed_calls(self) -> int:
+        """MCP calls the skill is meant to route — total minus passthrough."""
+        return self.mcp_calls - self.passthrough_calls
+
+    @property
+    def ratio(self) -> float:
+        """Skill calls per *routed* MCP call (passthrough verbs excluded).
+
+        ratio = 0       → skill never fired, all routed access was direct
+        ratio = 1       → exactly one Skill per routed MCP (overkill, but discoverable)
         ratio in (0,1)  → skill fires sometimes; the typical healthy band is
                           0.05..0.5 since one Skill load covers many MCP calls
         """
-        return self.skill_calls / self.mcp_calls if self.mcp_calls else float("nan")
+        return self.skill_calls / self.routed_calls if self.routed_calls else float("nan")
 
     @property
     def health(self) -> str:
         # UNUSED: no signal at all in this corpus.
         if self.mcp_calls == 0 and self.skill_calls == 0:
             return "UNUSED"
-        # BYPASSED: heavy MCP usage with effectively no Skill firing. The
-        # threshold (ratio < 0.005, mcp > 20) catches the canonical case
-        # where the SKILL.md routing table never reaches the model even
-        # though the underlying tools are hammered.
-        if self.mcp_calls > 20 and self.ratio < 0.005:
+        # BYPASSED: heavy routed usage but the Skill umbrella NEVER fired — the
+        # canonical "SKILL.md routing table never reaches the model" case. Keyed
+        # on skill_calls == 0 (the documented premise), not a ratio floor, so a
+        # plugin whose skill *does* fire isn't mislabeled merely for high volume
+        # (one Skill load legitimately covers many downstream calls). Passthrough
+        # verbs are already excluded from routed_calls.
+        if self.routed_calls > 20 and self.skill_calls == 0:
             return "BYPASSED"
-        # LOW: some MCP, no Skill. Could be small-sample noise OR an
+        # LOW: some routed MCP, no Skill. Could be small-sample noise OR an
         # early-warning sign that the description doesn't match user phrasing.
-        if self.skill_calls == 0 and self.mcp_calls > 5:
+        if self.skill_calls == 0 and self.routed_calls > 5:
             return "LOW"
         if self.skill_calls == 0:
             return "INCIDENTAL"
@@ -171,13 +201,15 @@ def render_text(stats: dict[str, PluginStats], transcripts: list[Path]) -> tuple
     any_bypassed = False
     for plugin, s in sorted(stats.items()):
         health = s.health
+        pt_verbs = PASSTHROUGH_VERBS.get(plugin, set())
         if health == "UNUSED":
             ratio_s = "—"
             top = "—"
         else:
-            ratio_s = f"{s.ratio:.3f}" if s.mcp_calls else "—"
+            ratio_s = f"{s.ratio:.3f}" if s.routed_calls else "—"
             top_verbs = sorted(s.mcp_by_verb.items(), key=lambda x: -x[1])[:3]
-            top = ", ".join(f"{v}×{n}" for v, n in top_verbs)
+            top = ", ".join(f"{v}×{n}" + (" [passthrough]" if v in pt_verbs else "")
+                            for v, n in top_verbs)
         out.append(f"{plugin:<14} {health:<11} {s.skill_calls:>6} {s.mcp_calls:>6} {ratio_s:>8}  {top}")
         if health == "BYPASSED":
             any_bypassed = True
@@ -185,7 +217,8 @@ def render_text(stats: dict[str, PluginStats], transcripts: list[Path]) -> tuple
     out.append("Legend:")
     out.append("  ENGAGED    The skill umbrella fires regularly relative to MCP usage.")
     out.append("  LOW        Some MCP usage, no Skill calls — could be small sample, could be description gap.")
-    out.append("  BYPASSED   >20 MCP calls, Skill ratio < 0.005 — SKILL.md trigger language is failing to match.")
+    out.append("  BYPASSED   >20 routed MCP calls, 0 Skill invocations — SKILL.md trigger language never matched.")
+    out.append("             (passthrough verbs like jetsam `git` are excluded from the routed count.)")
     out.append("  INCIDENTAL Trivial MCP usage with no Skill — too few samples to judge.")
     out.append("  UNUSED     No activity in this corpus.")
     out.append("")
@@ -202,7 +235,9 @@ def render_json(stats: dict[str, PluginStats], transcripts: list[Path]) -> tuple
             p: {
                 "skill_calls": s.skill_calls,
                 "mcp_calls": s.mcp_calls,
-                "ratio": s.ratio if s.mcp_calls else None,
+                "passthrough_calls": s.passthrough_calls,
+                "routed_calls": s.routed_calls,
+                "ratio": s.ratio if s.routed_calls else None,
                 "health": s.health,
                 "top_verbs": dict(sorted(s.mcp_by_verb.items(), key=lambda x: -x[1])[:5]),
             }
