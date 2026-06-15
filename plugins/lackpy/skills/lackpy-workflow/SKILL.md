@@ -1,7 +1,7 @@
 ---
 name: lackpy-workflow
 description: Local-model micro-inferencer — delegate natural-language intents to a sandboxed tool-composition program generator. Triggers on "delegate this to lackpy", "generate a program for...", "have lackpy figure out...", "run this query through the local model", "let the small model handle X". One lackpy `delegate` call replaces N manual tool round-trips when the task is multi-step but mechanical (find, filter, aggregate, transform). Also use for: validating lackpy programs (`validate`), browsing the language spec or toolkits (`language_spec` / `kit_list` / `toolbox_list`), or inspecting which provider/model is configured (`provider_list` / `config`). Inference runs against a local Ollama endpoint — not Claude — so this is the right surface for tasks where Claude shouldn't burn its own context window on routine multi-step composition.
-version: 1.0.0
+version: 1.0.1
 ---
 
 # lackpy — local-model micro-inferencer
@@ -92,3 +92,21 @@ delegate(intent="find all *.py files modified in last week and count their lines
 - **If `delegate` is over-generating** (program too complex / fails validation), drop to `generate` to inspect, then `validate` + `run_program` separately so you can iterate.
 - **Tracing** — `run_program` traces tool calls; useful for debugging "why did delegate return X?".
 - **The language is strict** — `validate` will reject Python that isn't in the AST whitelist. If you're hand-writing programs, check `language_spec` first.
+
+## Known limitations
+
+- **Hard dependency on a local model endpoint.** `delegate` / `generate` call
+  a local Ollama server; if it's down, the configured model isn't pulled, or
+  no provider is set, they fail (not a Claude fallback). Before relying on it
+  in a flow, confirm with `provider_list()` / `config()`.
+- **Strict AST whitelist rejects over-generation.** If `delegate` keeps
+  failing validation, the small model is emitting Python outside the language.
+  Drop to `generate` → `validate` → `run_program` to see the program and
+  iterate, rather than re-calling `delegate` blindly.
+- **Quality scales with the model and kit scope.** Generation is far more
+  reliable on a larger model (`qwen3:14b-iq4xs` ≫ a 1.5B) and with *fewer*
+  kits (smaller prompt). Pass only the kits the task needs; decompose complex
+  or ambiguous intents into smaller delegations.
+- **Not for judgment work.** lackpy is for mechanical N-step composition.
+  Anything needing design, disambiguation, or recovery from messy tool output
+  belongs in Claude's own loop — see "When NOT to use lackpy" above.

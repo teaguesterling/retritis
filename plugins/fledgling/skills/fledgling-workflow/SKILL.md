@@ -1,7 +1,7 @@
 ---
 name: fledgling-workflow
 description: Code intelligence primitives — AST-based search, git diff/show, Claude conversation history. Triggers on "find this function/class", "what does this look like at HEAD~3", "diff between revisions", "search past sessions", "complexity hotspots", "module dependencies". PREFER squackit-workflow first for everyday code-search ("find/where is/show me X" in source) — squackit is a higher-level wrapper over fledgling that handles FTS+caching. Fall through to fledgling here when squackit doesn't cover the query: git revision reads (GitShow), cross-revision diffs (GitDiffSummary/GitDiffFile), Claude session history (ChatSearch/ChatSessions/ChatToolUsage), or direct SQL via `query` for complexity/dependency/structural-diff macros. NOT raw `grep`/`git log`/`git diff` via Bash — those bypass the AST + indexed history that's the whole point.
-version: 1.0.0
+version: 1.0.1
 ---
 
 # Fledgling — DuckDB Code Analysis
@@ -100,3 +100,22 @@ SELECT * FROM changed_function_summary('HEAD~3', 'HEAD');
 
 - DuckDB with extensions: `duckdb_mcp`, `duck_tails`, `markdown`, `read_lines`, `sitting_duck`
 - Project must be initialized: `curl -sL https://teaguesterling.github.io/fledgling/install.sql | duckdb`
+
+## Known limitations
+
+- **DuckDB community extensions are per-version.** Fledgling's analyst engine
+  loads `duck_tails` / `sitting_duck` / `duck_hunt`. If they aren't installed
+  for the duckdb version in use you get
+  `IO Error: Extension ".../v<X.Y.Z>/duck_tails..." not found`. Fix:
+  `INSTALL duck_tails FROM community;` (and `sitting_duck`, `duck_hunt`) for
+  that version — and re-run it after every duckdb upgrade. (Hit on v1.5.3,
+  2026-06-12: only `duck_tails` was missing while the other two were present.)
+- **The index must exist first.** Queries over a repo that was never indexed
+  return empty or error — run the install/init step above before searching.
+- **The python `duckdb` module and the `duckdb` CLI may be different versions.**
+  The analyst engine shells to the CLI, so the *CLI's* version (not the
+  python module's) decides which extension directory is consulted — check
+  `duckdb --version` when an extension "isn't found" despite being installed.
+- **Prefer squackit for everyday `find/where/who-calls`.** These primitives
+  are lower-level; squackit wraps them with FTS + per-root caching. Drop here
+  only for git-revision reads, cross-revision diffs, chat history, or raw SQL.

@@ -1,7 +1,7 @@
 ---
 name: blq-workflow
 description: All build, test, and CI operations — capture output, query later. Triggers on "run the tests", "build it", "rebuild", "what errored", "check lint", "run typecheck", "what was the test output", "diff against the previous run", "what's failing in CI". Route through blq MCP tools instead of `pytest`/`make`/`cargo`/`npm` through Bash, because blq captures + indexes output for query without re-running, extracts structured errors (no manual grep), and tracks run history. NO shell pipes — run first, then filter with `output(grep=..., tail=...)`. Use `commands()` to list registered build/test/lint/typecheck targets before running.
-version: 1.0.1
+version: 1.0.2
 ---
 
 # blq — Build Log Query
@@ -70,9 +70,9 @@ mcp__blq_mcp__clean(mode="prune", days=30, confirm=True)  # cleanup: data/prune/
 
 ## Session config — `config()`
 
-Available in blq 1.0.1+ (PR #44 merged 2026-06-07; pending release).
-In-memory only — wiped on server restart. Persistent state (run history,
-retention, registered commands) stays in the DB.
+Available in blq 1.0.1+ (released, on PyPI). In-memory only — wiped on
+server restart. Persistent state (run history, retention, registered
+commands) stays in the DB.
 
 ```
 mcp__blq_mcp__config()                                    # read current
@@ -97,6 +97,29 @@ Env-var seeding at MCP server launch (via `.mcp.json` env block):
 `BLQ_ACTIVE_ROOT`, `BLQ_LOG_LEVEL`, `BLQ_DEFAULT_LINES_WINDOW`,
 `BLQ_DEFAULT_HISTORY_LIMIT`. Read once at launch; `config(reset=true)`
 reverts to these values.
+
+## Refs — how to point at a run or event
+
+Tools like `output`, `info`, `inspect`, `report` take a `ref`. Grammar:
+
+- `<command>:<run>` — a specific run, e.g. `build:5` (the 5th run of `build`)
+- `<command>:<run>:<event>` — a specific event in a run, e.g. `test:1:3`
+  (for `inspect`)
+- `+N` / `-N` — relative, e.g. `+1` is the most recent run
+- `latest` — newest run. **Default is `+1`** when `ref` is omitted.
+
+## Known limitations
+
+- **`config()` is in-memory** — wiped on server restart; only run history,
+  retention, and registered commands persist (in the DB). Re-set knobs like
+  `active_root` after a restart.
+- **`run` vs `exec`** — `run` executes a *registered* command (shows in
+  `commands()` and history under its name); `exec` runs an ad-hoc shell line.
+  Both capture output and land in history, but `exec` runs won't appear in
+  `commands()`. Register a command if you'll re-run or diff it.
+- **Filtering is server-side, not shell** — there are no pipes/redirects; run
+  the command, then `output(grep=..., tail=...)`. A `| grep` in the command
+  string filters nothing useful because capture happens before the pipe.
 
 ## Important rules
 

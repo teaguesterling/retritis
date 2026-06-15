@@ -1,7 +1,7 @@
 ---
 name: jetsam-workflow
 description: Use this skill for ALL git and GitHub workflow operations. Triggers on commit/save, push/sync, ship, release/tag, open or merge PR, check CI, manage issues, start/switch/finish a branch, or anything phrased like "ship it", "bump and tag", "merge when green", "release v...". Route through jetsam workflow verbs (save / sync / ship / release / start / switch / finish / tidy / checks) — NOT raw `git`/`gh` via Bash and NOT the low-level `mcp__jetsam__git` passthrough. Workflow verbs return plans you confirm() before they execute, catching mistakes before history is written. Use the `git` passthrough only when no workflow verb fits.
-version: 1.0.1
+version: 1.0.2
 ---
 
 # Jetsam Git Workflow
@@ -80,8 +80,8 @@ Do NOT run git or gh commands through Bash. Use these JetSam MCP tools instead:
 
 ## Session config — `mcp__jetsam__config`
 
-Available in jetsam 1.1.2+ (pending release as of 2026-06-07; on
-`feat/config-endpoint` branch). In-memory only — wiped on server restart.
+Available in jetsam 1.1.2+ (released, on PyPI; merged to main). In-memory
+only — wiped on server restart.
 
 ```
 mcp__jetsam__config()                                    # read current
