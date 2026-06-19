@@ -51,7 +51,7 @@ CLI_PLUGINS = {
 }
 
 # Plugins that are intentionally disabled (skipped in lint with a note).
-DISABLED_PLUGINS = {"kibitzer"}
+DISABLED_PLUGINS: set[str] = set()  # kibitzer enabled 2026-06-19 (default-free + advisory nudges)
 
 # Plugins whose MCP servers cost too much to spawn for a lint (or that need
 # special env). None today; reserved for future opt-out.
