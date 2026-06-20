@@ -22,7 +22,7 @@ jobs:
           - { pkg: "squackit",      boot: "squackit mcp serve" }
           - { pkg: "fledgling-mcp", boot: "fledgling-mcp serve" }
           - { pkg: "jetsam-mcp",    boot: "jetsam serve" }
-          - { pkg: "blq-cli",       boot: "blq mcp serve" }
+          - { pkg: "blq-cli[mcp]",  boot: "blq mcp serve" }
           - { pkg: "lackpy[mcp]",   boot: "lackpyctl mcp serve" }
           - { pkg: "kibitzer",      boot: "kibitzer mcp serve" }
     steps:
