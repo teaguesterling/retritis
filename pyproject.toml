@@ -1,0 +1,40 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "retritis"
+version = "2026.6.20"
+description = "Retritis — palliative treatments for agent-assisted development. A meta-installer pinning a verified-compatible set of the suite's MCP tools."
+readme = "README.md"
+requires-python = ">=3.10"
+license = "MIT"
+authors = [{ name = "Teague Sterling" }]
+keywords = ["mcp", "claude-code", "code-intelligence", "agent-tools", "retritis"]
+
+# Core MCP servers — always installed. The version ranges are bumped only when
+# the fresh-install CI (.github/workflows/fresh-install.yml) proves a new
+# combination installs-and-boots together; the calendar version marks that
+# verified snapshot (it is NOT an API version).
+dependencies = [
+    "squackit>=0.7.1,<0.8",
+    "fledgling-mcp>=0.12,<0.13",
+    "ast-pluckit>=0.14,<0.15",
+    "jetsam-mcp>=1.1.2,<1.2",
+    "blq-cli>=1.0.1,<1.1",
+]
+
+[project.optional-dependencies]
+# Heavier / situational pieces — opt in.
+local-model = ["lackpy[mcp]>=0.13,<0.14"]   # NL intent → sandboxed program; needs a local Ollama
+coaching    = ["kibitzer>=0.8,<0.9"]         # tool-call observer / structured-alternative nudges
+memory      = ["agent-riggs>=0.1,<0.2"]      # cross-session memory + trust scoring
+all         = ["retritis[local-model,coaching,memory]"]
+
+[project.urls]
+Homepage = "https://github.com/teaguesterling/retritis"
+Repository = "https://github.com/teaguesterling/retritis"
+
+[tool.hatch.build.targets.wheel]
+# Metapackage: dependencies only, no Python modules to build.
+bypass-selection = true

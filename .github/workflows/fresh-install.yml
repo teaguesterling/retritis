@@ -1,0 +1,71 @@
+name: fresh-install
+
+# Catch the recurring packaging failures (bad pins, wrong-name extras, missing
+# extras, unpublished local deps, duckdb-extension gaps) by doing a CLEAN
+# install of each suite tool from PyPI and booting its MCP server. Runs weekly,
+# on demand, and whenever the meta-package pins change.
+on:
+  schedule:
+    - cron: "0 6 * * 1"        # Mondays 06:00 UTC
+  workflow_dispatch: {}
+  push:
+    paths: ["pyproject.toml", ".github/workflows/fresh-install.yml"]
+
+jobs:
+  per-tool:
+    name: ${{ matrix.tool.pkg }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        tool:
+          - { pkg: "squackit",      boot: "squackit mcp serve" }
+          - { pkg: "fledgling-mcp", boot: "fledgling-mcp serve" }
+          - { pkg: "jetsam-mcp",    boot: "jetsam serve" }
+          - { pkg: "blq-cli",       boot: "blq mcp serve" }
+          - { pkg: "lackpy[mcp]",   boot: "lackpyctl mcp serve" }
+          - { pkg: "kibitzer",      boot: "kibitzer mcp serve" }
+    steps:
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.12" }
+
+      - name: Clean install (ONLY this tool, from PyPI)
+        run: |
+          python -m venv /tmp/v
+          /tmp/v/bin/pip install --upgrade pip
+          /tmp/v/bin/pip install "${{ matrix.tool.pkg }}"
+
+      - name: Install duckdb community extensions (backends need them at boot)
+        run: |
+          /tmp/v/bin/python - <<'PY' || true
+          import duckdb
+          con = duckdb.connect()
+          for ext in ("sitting_duck", "duck_tails", "duck_hunt"):
+              try:
+                  con.execute(f"INSTALL {ext} FROM community")
+              except Exception as e:
+                  print(f"skip {ext}: {e}")
+          PY
+
+      - name: Boot the MCP server
+        # Success = exits 0 on </dev/null, or 124 (timed out = stayed up).
+        # An import/resolution crash exits non-zero quickly.
+        run: |
+          set +e
+          timeout 15 /tmp/v/bin/${{ matrix.tool.boot }} </dev/null
+          rc=$?
+          echo "boot exit: $rc"
+          [ $rc -eq 0 ] || [ $rc -eq 124 ]
+
+  meta:
+    name: retritis[all] installs together
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.12" }
+      - name: Install the pinned suite as one set
+        run: |
+          python -m venv /tmp/v
+          /tmp/v/bin/pip install --upgrade pip
+          /tmp/v/bin/pip install ".[all]"
