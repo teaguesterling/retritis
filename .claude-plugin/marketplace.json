@@ -33,7 +33,7 @@
       "name": "kibitzer",
       "source": "./plugins/kibitzer",
       "description": "Tool call observer \u2014 suggests structured alternatives when you reach for grep",
-      "version": "1.0.0"
+      "version": "1.0.1"
     },
     {
       "name": "agent-riggs",
