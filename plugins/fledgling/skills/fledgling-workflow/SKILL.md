@@ -1,14 +1,18 @@
 ---
 name: fledgling-workflow
-description: Code intelligence primitives — AST-based search, git diff/show, Claude conversation history. Triggers on "find this function/class", "what does this look like at HEAD~3", "diff between revisions", "search past sessions", "complexity hotspots", "module dependencies". PREFER squackit-workflow first for everyday code-search ("find/where is/show me X" in source) — squackit is a higher-level wrapper over fledgling that handles FTS+caching. Fall through to fledgling here when squackit doesn't cover the query: git revision reads (GitShow), cross-revision diffs (GitDiffSummary/GitDiffFile), Claude session history (ChatSearch/ChatSessions/ChatToolUsage), or direct SQL via `query` for complexity/dependency/structural-diff macros. NOT raw `grep`/`git log`/`git diff` via Bash — those bypass the AST + indexed history that's the whole point.
-version: 1.0.1
+description: squackit's DuckDB backend (AST + git + chat history over a code index). PREFER squackit-workflow for ALL everyday work — code search, structure, git-revision reads, AND Claude session history — squackit wraps fledgling and exposes those directly with FTS + caching. Drop to fledgling here ONLY for the one thing squackit doesn't wrap: raw DuckDB SQL over the index — `query` / `list_tables` / `describe` (ad-hoc joins, the complexity/dependency/structural-diff macros). Triggers on "run raw SQL over the code index", "query the AST tables directly". NOT raw `grep`/`git log`/`git diff` via Bash — those bypass the AST + indexed history.
+version: 1.0.2
 ---
 
 # Fledgling — DuckDB Code Analysis
 
-Fledgling provides AST-based code analysis, git diff tools, and conversation
-history through DuckDB. Use fledgling tools for structural code understanding
-instead of grep.
+Fledgling is squackit's DuckDB backend. **For everyday work, use squackit** —
+it wraps all of this (search, structure, git-revision reads, chat history) with
+FTS + per-root caching and token-aware truncation. Reach for fledgling directly
+only when you need **raw SQL over the index** (`query` / `list_tables` /
+`describe`) — the one surface squackit doesn't expose. The tool reference below
+is the backend; everything except `query`/`list_tables`/`describe` has a
+squackit equivalent you should prefer.
 
 ## When to use fledgling vs grep/git
 

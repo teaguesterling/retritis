@@ -21,13 +21,13 @@
       "name": "fledgling",
       "source": "./plugins/fledgling",
       "description": "DuckDB code analysis \u2014 definitions, callers, structure, similarity",
-      "version": "1.0.1"
+      "version": "1.0.2"
     },
     {
       "name": "squackit",
       "source": "./plugins/squackit",
       "description": "Code intelligence MCP server \u2014 smart defaults, session caching, compound workflows",
-      "version": "1.0.2"
+      "version": "1.0.3"
     },
     {
       "name": "kibitzer",

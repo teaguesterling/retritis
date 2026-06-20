@@ -1,7 +1,7 @@
 ---
 name: squackit-workflow
-description: Code intelligence — the wrapper-layer over fledgling for everyday code search and structural understanding. Triggers on "find X in the code", "where is X defined", "show me what calls X", "what's the structure of this project", "outline this file/module", "what does X look like". USE THIS FIRST for any "find/where/who-calls/show-structure" question in source — squackit handles FTS, AST queries, caching, and per-root context that grep/find can't. Fall through to fledgling-workflow only for git diff/revision reads or Claude conversation history that squackit doesn't expose. NOT raw `grep -r`/`find -name`/`rg` via Bash — those skip the AST + FTS index that's the whole point.
-version: 1.0.2
+description: Code intelligence — the wrapper-layer over fledgling for everyday code search and structural understanding. Triggers on "find X in the code", "where is X defined", "show me what calls X", "what's the structure of this project", "outline this file/module", "what does X look like". USE THIS FIRST for any "find/where/who-calls/show-structure" question in source — squackit handles FTS, AST queries, caching, and per-root context that grep/find can't. Fall through to fledgling-workflow only for raw DuckDB SQL over the index (`query`/`list_tables`/`describe`) — squackit wraps everything else, including git-revision reads and Claude session history. NOT raw `grep -r`/`find -name`/`rg` via Bash — those skip the AST + FTS index that's the whole point.
+version: 1.0.3
 ---
 
 # squackit — code intelligence (the fledgling wrapper)
