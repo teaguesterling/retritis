@@ -15,6 +15,10 @@ design (mirrors the trigger_analysis PASSTHROUGH lesson):
 
 Not a CI gate — a probe to eyeball whether the preference signal is real.
 
+SEE ALSO: scripts/bypass.sql — the substrate-native successor that runs this as
+SQL over fledgling's conversation parser (Step 0 of the agent-riggs duck-parser
+plan). This Python version stays as the dependency-free fallback.
+
 Usage:  python3 scripts/bypass_probe.py [WINDOW_DAYS]   (default 14)
 """
 from __future__ import annotations
