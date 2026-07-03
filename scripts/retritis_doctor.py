@@ -101,11 +101,14 @@ def check_editable_installs(fix: bool = False) -> list[Check]:
         if Path(target).is_dir():
             checks.append(Check(f"editable {pkg}", "OK", target))
             continue
-        # Stale — try to find the right path
+        # Stale — try to find the right path. Exact repo-name match only:
+        # a loose startswith could redirect an editable package's import
+        # root to an unrelated sibling repo (e.g. `fledgling` matching
+        # `fledgling-experiments`). See issue #2.
         suggestion: str | None = None
         for hint in SOURCE_REPO_HINTS:
             for repo_root in hint.iterdir() if hint.exists() else []:
-                if repo_root.name.lower().startswith(pkg.lower().split("_")[0]):
+                if repo_root.name.lower() == pkg.lower().split("_")[0]:
                     # Heuristic: strip everything before the first /Projects/<repo>
                     parts = target.split("/")
                     for i, part in enumerate(parts):

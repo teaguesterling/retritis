@@ -309,7 +309,7 @@ The suite has a theoretical frame: Stafford Beer's [Viable System Model](https:/
 | **S4** Intelligence | Environmental scanning, adaptation | The LLM (Claude) + Ollama via lackpy (local 1.5B for tool composition) |
 | **S5** Identity | What the system is for, whose values it serves | The human. umwelt encodes their policy. In sub-agent contexts, the parent Claude is S5 for the child. |
 
-Current agent architectures have S1, S4, S5 — but only partial S2 and S3. The coordination function is limited to the harness's built-in permission model (hooks, allowlists); the control function is performed manually by the human or not at all. Retritis fills both gaps: umwelt provides declarative, auditable control (S3) — a policy compiled once and enforced at every tool boundary — while kibitzer provides the in-session observation and adjustment loop, and agent-riggs records traces across sessions for the ratchet (S3*).
+Current agent architectures have S1, S4, S5 — but only partial S2 and S3. The coordination function is limited to the harness's built-in permission model (hooks, allowlists); the control function is performed manually by the human or not at all. Retritis fills both gaps: umwelt provides declarative, auditable control (S3) — a policy compiled once that consumers *query* at their tool boundaries — while kibitzer provides the in-session observation and adjustment loop, and agent-riggs records traces across sessions for the ratchet (S3*). To be precise about the guarantee: this integration layer is **advisory glue**, not an enforcement perimeter. Policy is enforced only where a consumer (kibitzer, lackpy, a sandbox builder such as nsjail) actually queries and applies it; the hooks shipped here warn and coach, and by default they fail open when a component is missing (see [Trust model & enforcement posture](#trust-model--enforcement-posture)). Hard isolation comes from composing umwelt with an actual sandbox, not from this repo.
 
 The audit tools (S3*) produce structured data. The ratchet mechanism promotes repeated patterns from observations to templates to tools. Each promotion removes a friction point and frees attention for higher-level work. The ratchet only turns one direction: things that work get crystallized; things that don't get observed and eventually addressed.
 
@@ -336,6 +336,11 @@ duckdb -c "INSTALL sitting_duck FROM community; INSTALL duck_tails FROM communit
 
 # 3. Add the retritis plugin marketplace (inside Claude Code)
 /plugin marketplace add teaguesterling/retritis
+
+# 3b. Verify the checkout against its lock before trusting the plugins:
+#     every plugin's pinned version + content hash must match plugins.lock.json
+#     (rejects tampered/drifted plugin trees — fail closed).
+python3 scripts/verify_plugins.py
 
 # 4. Install all plugins
 /plugin install blq@retritis
@@ -403,6 +408,16 @@ scripts/retritis_doctor.py --fix
 Exit codes follow a consistent convention: `0` = all green, `1` = hard failure (hallucination, broken install, BYPASSED plugin), `2` = warnings only.
 
 The `quality` GitHub Actions workflow runs `skill_drift_lint.py` on every PR that touches a SKILL.md or .mcp.json — so SKILL.md content can't drift away from the underlying tool schemas without being caught.
+
+### Trust model & enforcement posture
+
+Retritis is **advisory glue under a real sandbox** (umwelt policy + an isolation layer like nsjail), not an enforcement perimeter by itself. The explicit trust decisions:
+
+- **Cross-session briefings are untrusted data.** The agent-riggs SessionStart hook surfaces a *prior session's* briefing, which can carry text derived from earlier tool outputs or repo files. It is piped through `plugins/agent-riggs/hooks/briefing_guard.py`, which normalizes it, redacts instruction-shaped lines, and fences it as explicitly untrusted DATA before injection. This is a mitigation for the embedded-directive class of poisoning, not a proof — adversarial content that reads as plausible telemetry can survive. Treat the `.riggs/` store with the same trust as the checkout itself.
+- **Plugins are pinned and verified, fail closed.** `plugins.lock.json` records a pinned version + sha256 tree hash per plugin; `scripts/verify_plugins.py` rejects any unpinned entry, version drift, or content mismatch. CI verifies on every PR, and installs should run it after `/plugin marketplace add` (step 3b above). Limits: the lock lives in this repo, so it defends against tampered *checkouts* and unreviewed plugin changes — not against a fully compromised upstream; that requires commit signing / out-of-band lock comparison.
+- **MCP server commands resolve from `$PATH`.** Each plugin's `.mcp.json` invokes bare command names (`blq`, `jetsam`, `fledgling`, …). Whatever binary is first on your PATH *is* the MCP server — inherent to the Claude Code plugin model. Keep attacker-writable directories off your PATH; `scripts/retritis_doctor.py` shows which binaries actually resolved.
+- **Hooks fail open by default — visibly.** The kibitzer PreToolUse guard warns and proceeds when kibitzer isn't importable (a warning is printed; nothing is silently dropped). Set `RETRITIS_FAIL_CLOSED=1` to block tool calls instead when the guard can't run. The doctor reports component health but is diagnostic, not a gate.
+- **The suite discourages raw `Bash`, yet blq ships a general `exec` tool.** That is a deliberate ergonomic escape hatch, and it has the same power as `Bash` — umwelt/kibitzer policy and the sandbox are what constrain it, not the tool's framing.
 
 ---
 

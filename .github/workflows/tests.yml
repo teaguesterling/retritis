@@ -1,0 +1,36 @@
+name: tests
+
+# Runs the unit/regression suite (briefing guard, plugin verification,
+# metrics probe) and verifies every marketplace plugin against
+# plugins.lock.json — a diff that touches plugins/ without relocking, or a
+# tampered plugin tree, fails here (fail closed).
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch: {}
+
+jobs:
+  tests:
+    name: pytest + plugin lock verification
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout retritis
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Verify pinned plugins against plugins.lock.json
+        run: python3 scripts/verify_plugins.py
+
+      - name: Install pytest
+        run: python -m pip install --upgrade pip pytest
+
+      - name: Run test suite
+        run: python -m pytest tests/ -v
