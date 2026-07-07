@@ -6,3 +6,7 @@
 # phase4 bench build artifacts (persistent caches + throwaway worktrees)
 bench/phase4/results/_ccache/
 bench/phase4/results/_work/
+.riggs/
+
+# python droppings
+__pycache__/

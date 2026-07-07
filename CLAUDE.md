@@ -34,8 +34,10 @@ plugins/<name>/
 2. The `.mcp.json` should use the tool's standard serve command
 3. The skill should have a routing table: "instead of X, use Y"
 4. Hooks are optional — add when the plugin's tools overlap with common Bash patterns
-5. Add the plugin entry to `.claude-plugin/marketplace.json`
-6. Update `README.md`
+5. Add the plugin entry to `.claude-plugin/marketplace.json` — a `version` pin is required
+6. Relock: `python3 scripts/verify_plugins.py --update` (CI rejects plugin changes
+   whose content hash doesn't match `plugins.lock.json` — fail closed)
+7. Update `README.md`
 
 ### Existing tools and their repos
 

@@ -1,6 +1,6 @@
 ---
 name: agent-riggs-workflow
-description: Cross-session memory and trust analysis for agents. Use to ingest prior-session data, get a briefing, check trust scores, and surface recurring patterns worth promoting (ratchets). CLI, not an MCP server.
+description: Cross-session memory and trust analysis for agents. Triggers on "audit tool usage" / "which tools are being used" / "brief me on this project" / "start-of-session context" / "what happened in prior sessions" / "am I repeating past mistakes" / "what patterns recur" / "cross-session" / "trust scores" / "ratchet candidates" / "what should be promoted to a template". Use to ingest prior-session data, get a briefing, check trust scores, and surface recurring patterns worth promoting (ratchets). CLI, not an MCP server (a SessionStart hook auto-ingests + briefs in projects that ran `agent-riggs init`; these commands drive it directly).
 ---
 # agent-riggs — cross-session memory & analysis
 

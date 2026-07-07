@@ -1,0 +1,16 @@
+{
+  "description": "agent-riggs SessionStart: in projects with a .riggs/ store, ingest accumulated sibling-tool telemetry and surface the cross-session briefing as context. No-op elsewhere.",
+  "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash \"${CLAUDE_PLUGIN_ROOT}/hooks/agent-riggs-session-start.sh\"",
+            "timeout": 30
+          }
+        ]
+      }
+    ]
+  }
+}

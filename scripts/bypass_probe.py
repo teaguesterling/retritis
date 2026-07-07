@@ -27,26 +27,40 @@ from collections import defaultdict
 from pathlib import Path
 
 ROOT = Path.home() / ".claude/projects"
-WINDOW_DAYS = int(sys.argv[1]) if len(sys.argv) > 1 else 14
+DEFAULT_WINDOW_DAYS = 14
 
 RETRITIS = {"blq", "jetsam", "fledgling", "squackit", "lackpy", "kibitzer", "agent_riggs", "agentriggs"}
 MCP_RE = re.compile(r"^mcp__(?:plugin_)?(\w+?)(?:_\w+)?__(\w+)$")
 
 
-def classify_bash(cmd: str) -> str | None:
-    """Conservative: only count primary ops a workflow verb covers in-cwd."""
-    c = cmd.strip()
-    first = c.split("&&")[0].split("|")[0].strip()  # first stage only
-    if re.match(r"^(grep\s+-[A-Za-z]*r[A-Za-z]*\b|rg\b|ag\b|ack\b)", first):
+_STAGE_SPLIT = re.compile(r"&&|\|\||;|\|")
+
+
+def _classify_stage(stage: str) -> str | None:
+    if re.match(r"^(grep\s+-[A-Za-z]*r[A-Za-z]*\b|rg\b|ag\b|ack\b)", stage):
         return "squackit:search"
-    if re.match(r"^find\b.*-name\b", first):
+    if re.match(r"^find\b.*-name\b", stage):
         return "squackit:find"
-    m = re.match(r"^git\s+(?!-C\b)([a-z-]+)", first)
+    m = re.match(r"^git\s+(?!-C\b)([a-z-]+)", stage)
     if m and m.group(1) in {"status", "add", "commit", "push", "pull", "fetch",
                             "checkout", "switch", "merge", "stash"}:
         return f"jetsam:{m.group(1)}"
-    if re.match(r"^(pytest|py\.test|tox|make|cargo\s+(test|build)|npm\s+(test|run)|go\s+test|mypy|ruff)\b", first):
+    if re.match(r"^(pytest|py\.test|tox|make|cargo\s+(test|build)|npm\s+(test|run)|go\s+test|mypy|ruff)\b", stage):
         return "blq:run"
+    return None
+
+
+def classify_bash(cmd: str) -> str | None:
+    """Conservative: only count ops a workflow verb covers in-cwd.
+
+    Inspects EVERY pipeline/list stage (issue #2: the first-stage-only
+    version left `cd x && git commit` uncounted, undercounting adoption
+    metrics). Still excludes pipe-filter greps, `git -C`, and read-only git.
+    """
+    for stage in _STAGE_SPLIT.split(cmd.strip()):
+        cat = _classify_stage(stage.strip())
+        if cat:
+            return cat
     return None
 
 
@@ -68,56 +82,62 @@ def iter_blocks(p: Path):
         return
 
 
-cutoff = time.time() - WINDOW_DAYS * 86400
-sessions_total = sessions_qualified = 0
-bypass = defaultdict(int)
-retritis_calls = defaultdict(int)
-examples = defaultdict(list)
+def main() -> None:
+    WINDOW_DAYS = int(sys.argv[1]) if len(sys.argv) > 1 else DEFAULT_WINDOW_DAYS
+    cutoff = time.time() - WINDOW_DAYS * 86400
+    sessions_total = sessions_qualified = 0
+    bypass = defaultdict(int)
+    retritis_calls = defaultdict(int)
+    examples = defaultdict(list)
 
-for jf in ROOT.rglob("*.jsonl"):
-    try:
-        if jf.stat().st_mtime < cutoff:
+    for jf in ROOT.rglob("*.jsonl"):
+        try:
+            if jf.stat().st_mtime < cutoff:
+                continue
+        except OSError:
             continue
-    except OSError:
-        continue
-    if "retritis" in jf.parent.name:        # exclude maintenance sessions
-        continue
-    sessions_total += 1
-    rcalls = defaultdict(int)
-    bash_cmds = []
-    for b in iter_blocks(jf):
-        name = b.get("name", "")
-        if name == "Bash":
-            cmd = (b.get("input", {}) or {}).get("command", "")
-            if cmd:
-                bash_cmds.append(cmd)
+        if "retritis" in jf.parent.name:        # exclude maintenance sessions
             continue
-        m = MCP_RE.match(name)
-        if m:
-            plug = m.group(1).split("_")[0]
-            plug = "agent_riggs" if plug in ("agentriggs", "agent") else plug
-            if plug in RETRITIS:
-                rcalls[plug] += 1
-    if not rcalls:                # availability proxy: server proven loaded
-        continue
-    sessions_qualified += 1
-    for plug, n in rcalls.items():
-        retritis_calls[plug] += n
-    for cmd in bash_cmds:
-        cat = classify_bash(cmd)
-        if cat:
-            bypass[cat] += 1
-            if len(examples[cat]) < 3:
-                examples[cat].append(cmd.strip()[:90])
+        sessions_total += 1
+        rcalls = defaultdict(int)
+        bash_cmds = []
+        for b in iter_blocks(jf):
+            name = b.get("name", "")
+            if name == "Bash":
+                cmd = (b.get("input", {}) or {}).get("command", "")
+                if cmd:
+                    bash_cmds.append(cmd)
+                continue
+            m = MCP_RE.match(name)
+            if m:
+                plug = m.group(1).split("_")[0]
+                plug = "agent_riggs" if plug in ("agentriggs", "agent") else plug
+                if plug in RETRITIS:
+                    rcalls[plug] += 1
+        if not rcalls:                # availability proxy: server proven loaded
+            continue
+        sessions_qualified += 1
+        for plug, n in rcalls.items():
+            retritis_calls[plug] += n
+        for cmd in bash_cmds:
+            cat = classify_bash(cmd)
+            if cat:
+                bypass[cat] += 1
+                if len(examples[cat]) < 3:
+                    examples[cat].append(cmd.strip()[:90])
 
-print(f"window: last {WINDOW_DAYS}d | transcripts scanned (non-retritis): {sessions_total}")
-print(f"qualifying sessions (>=1 retritis call): {sessions_qualified}")
-print("  NOTE: undercounts — all-Bash sessions with the server silently loaded are invisible.\n")
-print("=== retritis tool calls in qualifying sessions ===")
-for p, n in sorted(retritis_calls.items(), key=lambda x: -x[1]):
-    print(f"  {p:12} {n}")
-print("\n=== genuine Bash bypasses (a verb covered it, in-cwd) ===")
-if not bypass:
-    print("  (none) — no raw-shell fallback detected in qualifying sessions.")
-for cat, n in sorted(bypass.items(), key=lambda x: -x[1]):
-    print(f"  {cat:18} {n:4}   e.g. {examples[cat][0] if examples[cat] else ''}")
+    print(f"window: last {WINDOW_DAYS}d | transcripts scanned (non-retritis): {sessions_total}")
+    print(f"qualifying sessions (>=1 retritis call): {sessions_qualified}")
+    print("  NOTE: undercounts — all-Bash sessions with the server silently loaded are invisible.\n")
+    print("=== retritis tool calls in qualifying sessions ===")
+    for p, n in sorted(retritis_calls.items(), key=lambda x: -x[1]):
+        print(f"  {p:12} {n}")
+    print("\n=== genuine Bash bypasses (a verb covered it, in-cwd) ===")
+    if not bypass:
+        print("  (none) — no raw-shell fallback detected in qualifying sessions.")
+    for cat, n in sorted(bypass.items(), key=lambda x: -x[1]):
+        print(f"  {cat:18} {n:4}   e.g. {examples[cat][0] if examples[cat] else ''}")
+
+
+if __name__ == "__main__":
+    main()
