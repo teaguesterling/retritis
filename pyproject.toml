@@ -8,7 +8,7 @@ version = "2026.6.20"
 description = "Retritis — palliative treatments for agent-assisted development. A meta-installer pinning a verified-compatible set of the suite's MCP tools."
 readme = "README.md"
 requires-python = ">=3.10"
-license = "MIT"
+license = "AGPL-3.0-or-later"
 authors = [{ name = "Teague Sterling" }]
 keywords = ["mcp", "claude-code", "code-intelligence", "agent-tools", "retritis"]
 
