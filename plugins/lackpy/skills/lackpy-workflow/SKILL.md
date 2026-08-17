@@ -1,7 +1,7 @@
 ---
 name: lackpy-workflow
 description: Local-model micro-inferencer — delegate natural-language intents to a sandboxed tool-composition program generator. Triggers on "delegate this to lackpy", "generate a program for...", "have lackpy figure out...", "run this query through the local model", "let the small model handle X". One lackpy `delegate` call replaces N manual tool round-trips when the task is multi-step but mechanical (find, filter, aggregate, transform). Also use for: validating lackpy programs (`validate`), browsing the language spec or toolkits (`language_spec` / `kit_list` / `toolbox_list`), or inspecting which provider/model is configured (`provider_list` / `config`). Inference runs against a local Ollama endpoint — not Claude — so this is the right surface for tasks where Claude shouldn't burn its own context window on routine multi-step composition.
-version: 1.0.1
+version: 1.1.0
 ---
 
 # lackpy — local-model micro-inferencer
@@ -87,11 +87,27 @@ delegate(intent="find all *.py files modified in last week and count their lines
 
 ## Tips
 
-- **Best local model:** `qwen3:14b-iq4xs` (per project memory, not `qwen2.5-coder:1.5b`)
-- **Kit selection matters** — pass only the kits the task needs. Fewer kits = smaller prompt = faster + more reliable generation.
-- **If `delegate` is over-generating** (program too complex / fails validation), drop to `generate` to inspect, then `validate` + `run_program` separately so you can iterate.
-- **Tracing** — `run_program` traces tool calls; useful for debugging "why did delegate return X?".
-- **The language is strict** — `validate` will reject Python that isn't in the AST whitelist. If you're hand-writing programs, check `language_spec` first.
+- **Read `lackpy-delegation` before delegating real work.** It is the caller's
+  half of the contract and it is where the measurements live: what you must
+  supply, which invocation form works, and the failure modes that look like model
+  weakness but are not.
+- **Curate tools per task** — 1-2 tools is ~200-470 prompt tokens against ~6,900
+  for a full toolbox. There is no all-tools mode: `resolve_tools(None)` raises
+  `NotImplementedError`, and omitting `--profile` falls back to a `debug` profile
+  that does not ship.
+- **Ready-made profiles** ship in this plugin's `profiles/` — `fix`, `diagnose`,
+  `ship`, `report`, `explore`. Copy into `.lackpy/kits/`.
+- **Phrase intents as "return X"** — lackpy returns the last *expression*, so a
+  program ending in `count = …` yields `None`.
+- **If `delegate` is over-generating**, drop to `generate` to inspect, then
+  `validate` + `run_program` separately so you can iterate.
+- **Tracing** — `run_program` traces tool calls; useful for "why did delegate
+  return X?".
+- **The language is strict** — and stricter than the docs suggest. `GeneratorExp`,
+  `next`, `Break`, `Continue`, `While` and `Try` are all rejected, while
+  `any`/`all`/`sum`/`max` are allowed — so the idiomatic `next(x for x in xs if …)`
+  fails and only `[x for x in xs if …][0]` works. Any string literal containing
+  `__` is rejected, so a program can neither write nor read `__init__.py`.
 
 ## Known limitations
 
@@ -103,10 +119,16 @@ delegate(intent="find all *.py files modified in last week and count their lines
   failing validation, the small model is emitting Python outside the language.
   Drop to `generate` → `validate` → `run_program` to see the program and
   iterate, rather than re-calling `delegate` blindly.
-- **Quality scales with the model and kit scope.** Generation is far more
-  reliable on a larger model (`qwen3:14b-iq4xs` ≫ a 1.5B) and with *fewer*
-  kits (smaller prompt). Pass only the kits the task needs; decompose complex
-  or ambiguous intents into smaller delegations.
+- **Quality scales with the model and kit scope**, but model choice is a trade
+  rather than a ranking: a Coder/Instruct model with no thinking mode is the best
+  speed-to-quality default, while a reasoning model with thinking *on* is the most
+  capable and several times slower. Pass only the tools the task needs.
+- **Failures are reported on stderr with exit 1**; success goes to stdout with
+  exit 0. A caller reading stdout alone records every failed generation as an
+  empty program with no error.
+- **Every MCP tool arrives with `returns="Any"`.** The argument schema reaches the
+  prompt; the return shape never does, so the model guesses — and a wrong guess
+  produces a program that validates, runs, and answers incorrectly.
 - **Not for judgment work.** lackpy is for mechanical N-step composition.
   Anything needing design, disambiguation, or recovery from messy tool output
   belongs in Claude's own loop — see "When NOT to use lackpy" above.

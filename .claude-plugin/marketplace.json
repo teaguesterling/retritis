@@ -1,6 +1,6 @@
 {
   "name": "retritis",
-  "description": "Retritis \u2014 palliative treatments for agent-assisted development. Claude Code plugins for the retritis tool suite.",
+  "description": "Retritis — palliative treatments for agent-assisted development. Claude Code plugins for the retritis tool suite.",
   "owner": {
     "name": "Teague Sterling"
   },
@@ -8,31 +8,31 @@
     {
       "name": "blq",
       "source": "./plugins/blq",
-      "description": "Build Log Query \u2014 stop copy-pasting terminal output into chat",
+      "description": "Build Log Query — stop copy-pasting terminal output into chat",
       "version": "1.0.2"
     },
     {
       "name": "jetsam",
       "source": "./plugins/jetsam",
-      "description": "Git workflow accelerator \u2014 save, sync, ship without the five-step dance",
+      "description": "Git workflow accelerator — save, sync, ship without the five-step dance",
       "version": "1.0.2"
     },
     {
       "name": "fledgling",
       "source": "./plugins/fledgling",
-      "description": "DuckDB code analysis \u2014 definitions, callers, structure, similarity",
+      "description": "DuckDB code analysis — definitions, callers, structure, similarity",
       "version": "1.0.2"
     },
     {
       "name": "squackit",
       "source": "./plugins/squackit",
-      "description": "Code intelligence MCP server \u2014 smart defaults, session caching, compound workflows",
+      "description": "Code intelligence MCP server — smart defaults, session caching, compound workflows",
       "version": "1.0.3"
     },
     {
       "name": "kibitzer",
       "source": "./plugins/kibitzer",
-      "description": "Tool call observer \u2014 suggests structured alternatives when you reach for grep",
+      "description": "Tool call observer — suggests structured alternatives when you reach for grep",
       "version": "1.0.1"
     },
     {
@@ -44,8 +44,8 @@
     {
       "name": "lackpy",
       "source": "./plugins/lackpy",
-      "description": "Intent\u2192sandboxed-program micro-inferencer (local model)",
-      "version": "1.0.1"
+      "description": "Intent→sandboxed-program micro-inferencer (local model) + measured delegation guidance",
+      "version": "1.1.0"
     },
     {
       "name": "umwelt",
