@@ -26,6 +26,16 @@ that only exists after a file has been read.
 
 So: you decide what changes. It edits, runs, commits, reports.
 
+And whatever you delegate, **never grade it by reading its answer.** Run the
+tests, read `git log`, open the file. Several mechanisms in this stack report
+success having done nothing — `save()` without `confirm()` returns a valid
+program, no error, and a plausible plan dict, and commits nothing.
+
+> **Version sensitivity.** Lines marked *(lackpy ≤ 0.4)* describe behaviour fixed
+> on the `mcp-tool-metadata` branch and not yet released. They are written so the
+> advice is safe on either version — following it costs nothing after the fix. If
+> you are on a later lackpy, re-check those three before treating them as current.
+
 ## You must supply three things. Missing any one fails.
 
 Measured as a ladder — each rung is a real suite call, crossed with whether the
@@ -48,10 +58,19 @@ is how you tell which piece you left out.
 Without it, even handing over the complete file scores 0/3. Information alone
 moves nothing.
 
-**2. The implicated source file — by name.** blq's `ref_file` names the *test*
-that failed, never the code at fault. Hand over `tests/test_x.py` and the model
-must guess where the implementation lives; it guesses wrong every time. Resolve
-the source path yourself, or use `squackit.view`, which returns it.
+**2. The implicated source file — by name.** Resolve it yourself; do not assume
+the failure event carries it.
+
+For a **single-frame assertion failure** — the common case, and the one where
+delegation is most attractive — blq's `ref_file` is the *test* file, because the
+traceback contains no other frame. Hand that over and the model must guess where
+the implementation lives; it guesses wrong every time. For a **multi-frame**
+failure it is usually right: duck_hunt's pytest parser keeps the *last*
+`file.py:NN:` location in the failures block, deliberately, so a
+test → helper → raise chain yields `src/mylib/checks.py:2`. Verified both ways.
+
+`pytest_json` always reports the `nodeid` prefix and never sets `ref_line`, so it
+is always the test. `squackit.view` returns the source path directly.
 
 **3. The file's current text.** Any operation whose payload derives from current
 state cannot be written by a program that has not yet read that state. This is
@@ -77,26 +96,35 @@ silent traps otherwise:
 | *(omit `--profile`)* | not "all tools" — the built-in default is a `debug` profile that does not ship |
 | `--profile none --tools log` | ✓ |
 
-**Read the failure envelope from stderr.** Success goes to stdout with exit 0;
-failure goes to **stderr with exit 1**. A caller reading stdout records every
-failed generation as an empty program with no error.
+**Read the failure envelope from stderr** *(lackpy ≤ 0.4; fixed by `a96bafa`)*.
+Success goes to stdout with exit 0; the "all providers failed" envelope goes to
+**stderr with exit 1**. A caller reading stdout alone records every failed
+generation as an empty program with no error. Read both streams and you are
+correct on either version.
 
 ## Writing the intent
 
 - **Say "return X."** lackpy returns the last *expression*. A program ending in
   `count = …` yields `None`.
-- **Name the return shape.** Every MCP tool arrives as `returns="Any"`, so the
-  model guesses, and a wrong guess still validates and runs. On a battery with no
-  shapes given: **0/24 correct while 17/24 called the right tool.**
+- **Name the return shape.** *(lackpy ≤ 0.4; `ce4d271` derives `returns` from the
+  tool's `outputSchema`, which fixes the type half.)* Every MCP tool arrived as
+  `returns="Any"`, so the model guessed, and a wrong guess still validates and
+  runs. On a battery with no shapes given: **0/24 correct while 17/24 called the
+  right tool.** Even after that fix, state the *keys* — fastmcp emits a keyless
+  `{"type": "object"}` for dict-returning tools, so the schema can say `dict`
+  without saying which key holds the answer.
 - **State invariants, not just APIs.** Describing `save()`'s return left the model
   calling `save` and stopping, 4/4 trials. Adding "*both statements are required;
   save alone does not commit*" fixed it first try. A shape is a fact about one
   call; an invariant is a fact about two, and only the first survives description.
 - **Do not paste source without a guard.** Injected code gets echoed into the
   program and fails validation with `Forbidden AST node: FunctionDef`.
-- **Avoid "find the first match."** `next(genexp)`, `for … break`, `any(genexp)`
-  and iterating a subscript are all rejected. Only `[x for x in xs if …][0]`
-  works — which trips better coder models *harder*, since they reach for `next`.
+- **Avoid "find the first match."** *(lackpy ≤ 0.4; `6e86efc` allows
+  `GeneratorExp` and `next`.)* `next(genexp)`, `any(genexp)`, `for … break` and
+  iterating a subscript were all rejected, leaving only
+  `[x for x in xs if …][0]` — which trips better coder models *harder*, since they
+  reach for `next`. `Break`, `Continue`, `While` and `Try` are still rejected, so
+  the loop-and-break form does not work on any version.
 
 ## Return shapes worth memorising
 
@@ -114,16 +142,16 @@ imports. Prefer `find_names` (splittable) over `find` (a table).
 
 ## Verify by inspecting the world
 
-Never grade a delegation by reading its answer.
+Stated once at the top; here is what it means per outcome.
 
 - a fix → run the tests, *and* assert the module and test file are intact, or a
   "fix" that deletes the failing test scores as a pass
 - a commit → `git log`
 - a written file → read it
 
-This is not paranoia. `save()` without `confirm()` returns a valid program, no
-error, and a plausible plan dict — and commits nothing. Several mechanisms in
-this stack report success having done nothing.
+This is not paranoia. It is the difference between a system that failed and a
+system that reported success having done nothing — and the second is
+indistinguishable from the first unless you look at the world.
 
 ## Configuration that changes outcomes
 
@@ -143,8 +171,11 @@ params   = { max_tokens = 4096, chat_template_kwargs = { enable_thinking = false
   most capable and ~3-5× slower.
 - **Curate tools per task.** 1-2 tools is ~200-470 prompt tokens against ~6,900
   for everything. There is no all-tools mode.
-- **Set `cwd` on every `[mcp_servers.*]` entry.** Otherwise squackit returns
-  `(no results)` for a glob that plainly matches — an empty answer, not an error.
+- **Set `cwd` on every `[mcp_servers.*]` entry.** A defensive habit rather than a
+  live bug: on squackit < 0.8.1 a mismatched cwd returned `(no results)` for a
+  glob that plainly matched — an empty answer, not an error. Fixed since, but the
+  habit costs nothing and the failure mode it guards against is the expensive
+  kind.
 
 ## When capturing test output
 
@@ -158,3 +189,7 @@ COLUMNS=200 blq run test      # stores 32 characters instead of 7
 ```
 
 `--keep-raw` retains the raw log but does **not** change the parsed message.
+
+Forward note: this becomes unnecessary if blq-cli#51 lands a wide capture default,
+or duck_hunt#57 stops the parser discarding the good message it already derived
+from the failures block. Correct today; check before relying on it.
