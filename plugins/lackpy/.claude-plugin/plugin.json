@@ -1,7 +1,7 @@
 {
   "name": "lackpy",
   "description": "Micro-inferencer — translates natural-language intent into sandboxed tool-composition programs via a local model. Ships measured delegation guidance and ready-made tool profiles.",
-  "version": "1.1.0",
+  "version": "1.1.1",
   "author": { "name": "Teague Sterling", "email": "teaguesterling@users.noreply.github.com" },
   "homepage": "https://github.com/teaguesterling/lackpy",
   "repository": "https://github.com/teaguesterling/lackpy",

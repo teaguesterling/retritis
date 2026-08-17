@@ -45,7 +45,7 @@
       "name": "lackpy",
       "source": "./plugins/lackpy",
       "description": "Intent→sandboxed-program micro-inferencer (local model) + measured delegation guidance",
-      "version": "1.1.0"
+      "version": "1.1.1"
     },
     {
       "name": "umwelt",

@@ -2,8 +2,10 @@
 docs: docs/tools/read_file.md
 ---
 # Read a captured failure and locate the code it implicates.
-# blq's ref_file names the TEST that failed, never the source at fault, so a
-# delegation that stops here will invent a source path. Carry the implementation.
+# Do not assume blq's ref_file carries the source at fault. On a single-frame
+# assertion failure -- the common case -- it is the TEST file, because the
+# traceback names nothing else, and a delegation that stops there will invent a
+# source path. Resolve the implementation yourself and carry it.
 events
 status
 find_names
