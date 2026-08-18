@@ -104,7 +104,7 @@ delegate(intent="find all *.py files modified in last week and count their lines
 - **Tracing** — `run_program` traces tool calls; useful for "why did delegate
   return X?".
 - **The language is strict** — and stricter than the docs suggest. `Break`,
-  `Continue`, `While` and `Try` are all rejected. *(lackpy ≤ 0.4; `6e86efc`
+  `Continue`, `While` and `Try` are all rejected. *(lackpy ≤ 0.15.1; `1c85284`
   allows `GeneratorExp` and `next`)* `GeneratorExp` and `next` are rejected too,
   while `any`/`all`/`sum`/`max` are allowed — so the idiomatic
   `next(x for x in xs if …)` fails and only `[x for x in xs if …][0]` works.
@@ -128,9 +128,9 @@ delegate(intent="find all *.py files modified in last week and count their lines
   capable and several times slower. Pass only the tools the task needs.
 - **Failures are reported on stderr with exit 1**; success goes to stdout with
   exit 0. A caller reading stdout alone records every failed generation as an
-  empty program with no error. *(lackpy ≤ 0.4; `a96bafa` moves the failure
+  empty program with no error. *(lackpy ≤ 0.15.1; `7430fd8` moves the failure
   envelope to stdout — reading both streams is safe on either version.)*
-- **Every MCP tool arrives with `returns="Any"`.** *(lackpy ≤ 0.4; `ce4d271`
+- **Every MCP tool arrives with `returns="Any"`.** *(lackpy ≤ 0.15.1; `4f5cccd`
   derives `returns` from the tool's `outputSchema`.)* The argument schema reaches
   the prompt; the return shape never does, so the model guesses — and a wrong
   guess produces a program that validates, runs, and answers incorrectly. Naming
