@@ -73,10 +73,17 @@ failure it is usually right: duck_hunt's pytest parser keeps the *last*
 test → helper → raise chain yields `src/mylib/checks.py:2`. Verified both ways.
 
 `pytest_json` always reports the `nodeid` prefix and never sets `ref_line`, so it
-is always the test. `squackit.view` **renders markdown** — `file:range` headings
-around fenced code — so it shows you the path but does not hand a program a path
-it can use. Inside a generated program prefer `find`/`find_names`, which return
-structured results; save `view` for output a human reads.
+is always the test.
+
+**Nothing in squackit hands a program a source path.** Over MCP — the setup this
+file configures — `view` renders markdown (`file:range` headings around fenced
+code), `find` renders a markdown table, and `find_names` returns a newline-joined
+string of *names*, never paths. All three are strings; see the measured table
+below. `as_json=true` switches every squackit tool to a documented envelope
+(`{"rows": […], "columns": […], "omitted": N}`), which is the right answer for a
+**tool-calling loop**, where your harness parses it — but not inside a generated
+lackpy program, which has no `json` in `ALLOWED_BUILTINS` and so cannot parse the
+envelope either. Resolve the path in the caller and pass it in.
 
 **3. The file's current text.** Any operation whose payload derives from current
 state cannot be written by a program that has not yet read that state. This is
@@ -187,13 +194,28 @@ The tier name (`llm` here) is arbitrary but must match between the two tables;
 load-bearing and both fail *quietly* — this block was published once without
 them, which reads fine and does nothing.
 
+`order = ["llm"]` does **not** mean LLM-only. `TemplatesProvider` and
+`RulesProvider` are appended unconditionally *before* the order loop, and
+dispatch returns the first provider yielding a valid program — so both always run
+ahead of your model whatever `order` says. `RulesProvider.available()` is
+unconditionally `True` and it preempts on exactly the intent shapes this file
+encourages (`read file X`, `find the definitions of X`, `glob X`). If you are
+measuring the model, confirm which tier actually answered rather than assuming.
+
+`api_key` is **optional** — lackpy passes `provider_cfg.get("api_key")` through,
+so `None` is fine for a local endpoint that does not check it. Set it if yours
+does; do not ship the literal `"..."`.
+
 - **Thinking is per-request configuration**, and the only dialect honoured is
   `chat_template_kwargs.enable_thinking`. Worth 33× on a reasoning model
   (23.1s → 0.7s). But it is an accuracy trade, not a tax — thinking **on** scores
   5/6 on real work against 3/6 **off**, so do not set it off globally.
 - **Model choice is a trade.** A Coder/Instruct model with no thinking mode is
   the best speed-to-quality default; a reasoning model with thinking on is the
-  most capable and ~3-5× slower.
+  most capable and ~3-5× slower. Note `lackpyctl init` still writes
+  `qwen2.5-coder:1.5b` as its default, and that is also lackpy's built-in
+  fallback model — 1.5B-class models did not survive delegation in any battery
+  here, so override it rather than inheriting it.
 - **Curate tools per task.** 1-2 tools is ~200-470 prompt tokens against ~6,900
   for everything. There is no all-tools mode.
 - **Set `cwd` on every `[mcp_servers.*]` entry.** A defensive habit rather than a
@@ -215,8 +237,12 @@ On v1.1.0 or later `blq run test` is already wide and needs nothing:
 
 ```bash
 blq run test                  # v1.1.0+: wide by default
-COLUMNS=200 blq run test      # only on blq < 1.1.0 -- a no-op on current versions
+COLUMNS=200 blq run test      # needed only on blq < 1.1.0
 ```
+
+The mechanism is `env.setdefault("COLUMNS", "200")`, so an explicit `COLUMNS`
+from the caller still wins — setting 200 on a current blq is redundant rather
+than ignored, and you can still narrow it deliberately to test truncation.
 
 Check with `blq --version` before reaching for the override. If your messages are
 still truncated on a current blq, the override will not help and the cause is

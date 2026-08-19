@@ -28,7 +28,7 @@
     },
     "lackpy": {
       "source": "./plugins/lackpy",
-      "tree_sha256": "1953e50483cf412532dc09bb04d2a0f18f29e4add2e73d7653c93d223cf686cf",
+      "tree_sha256": "d328d6d31fe5108d0cb5a93f36f7c914d2d8344bed3361fa635f185c518b8fe6",
       "version": "1.1.1"
     },
     "squackit": {
