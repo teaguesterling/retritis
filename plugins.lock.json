@@ -18,7 +18,7 @@
     },
     "jetsam": {
       "source": "./plugins/jetsam",
-      "tree_sha256": "072aa5671cd7160fbebb3258e1cf247aed263eeb8e3f09df9c7f3eccde9ca61d",
+      "tree_sha256": "d96af131d6131cd3fee55167bcbe74c93f709f0629443c5a42f77ceb42e61e67",
       "version": "1.0.2"
     },
     "kibitzer": {
@@ -28,12 +28,12 @@
     },
     "lackpy": {
       "source": "./plugins/lackpy",
-      "tree_sha256": "d328d6d31fe5108d0cb5a93f36f7c914d2d8344bed3361fa635f185c518b8fe6",
+      "tree_sha256": "6ae564571f3ea526621fba56506bf590161e42f155992ca44f06350a99d16a4f",
       "version": "1.1.1"
     },
     "squackit": {
       "source": "./plugins/squackit",
-      "tree_sha256": "e3b2e7eb78f906e101067e18c702cb1d64127781d364edcf5124e675ef549871",
+      "tree_sha256": "095de293c6247a32ee46813b298433f79f3fee021566caf0ba6a7969d24f76c0",
       "version": "1.0.3"
     },
     "test-failure-investigator": {

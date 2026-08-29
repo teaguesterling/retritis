@@ -42,6 +42,12 @@ Use these squackit MCP tools:
 - `find(source, selector, max_results?)` — AST nodes + file paths + line ranges. Same selectors as `find_names`.
 - `find_code_ranked(selector?, fts_query?, file_pattern?, lang?, max_results?)` — code matches ranked by BM25 relevance.
 - `ast_select_from(source, selector)` — raw AST selector query (lower-level than `find`).
+- `ast_call_graph(source?, file_pattern?)` — call relationships and AST call graph within files.
+- `ast_find_references(name, source?, file_pattern?)` — find AST references and usages of a named symbol.
+- `ast_get_calls(source?, file_pattern?)` — extract call expressions matching AST selectors.
+- `ast_patch(source, selector, replacement)` — patch matched AST nodes with replacement code.
+- `ast_replace(source, selector, replacement)` — replace AST node contents.
+- `ast_to_blocks(source)` / `ast_to_blocks_from(source, selector)` / `ast_to_blocks_list(source, selectors)` — extract hierarchical AST blocks.
 - `view(source, selector, max_results?)` — render matching source as markdown with file:range headings + fenced code blocks.
 
 ### Read things
@@ -71,6 +77,7 @@ Use these squackit MCP tools:
 
 ### Browse activity
 - `list_files(pattern?, commit?, max_results?)` — files by glob, optionally at a git commit.
+- `source_files(pattern?)` — list indexed source files matching an optional pattern.
 - `recent_changes(repo?, n?, max_results?)` — git commit history.
 - `file_changes(repo?, from_rev?, to_rev?, max_results?)` — files changed between two revisions.
 - `file_at_version(file, rev, repo?, max_lines?)` — file content at a git revision.

@@ -76,6 +76,8 @@ Do NOT run git or gh commands through Bash. Use these JetSam MCP tools instead:
 | `gh issue list` | `mcp__jetsam__issues` |
 | `gh issue close` | `mcp__jetsam__issue_close` |
 | `gh release create` | `mcp__jetsam__release` |
+| `git tag` / `git tag -l` / `git tag -a` | `mcp__jetsam__tag` |
+| `git push --force-with-lease` | `mcp__jetsam__sync(force_with_lease=True)` / `mcp__jetsam__ship(force_with_lease=True)` |
 | Other git commands | `mcp__jetsam__git` (passthrough) |
 
 ## Session config — `mcp__jetsam__config`

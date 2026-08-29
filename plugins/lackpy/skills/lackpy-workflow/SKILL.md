@@ -55,6 +55,8 @@ toolbox, then returns the result.
 - `kit_list()` — list available toolkits (named bundles of tools lackpy can use)
 - `kit_create(name, tools)` — create a new toolkit
 - `kit_info(name)` — show what tools a kit exposes
+- `profile_create(name, tools?, kits?)` — create a new execution profile
+- `profile_info(name)` — show configuration and tools for a profile
 - `toolbox_list()` — list every tool lackpy's runtime can invoke (across all kits)
 - `language_spec()` — show the lackpy language definition (the AST whitelist)
 
