@@ -1,7 +1,7 @@
 ---
 name: jetsam-workflow
-description: Use this skill for ALL git and GitHub workflow operations. Triggers on commit/save, push/sync, ship, release/tag, open or merge PR, check CI, manage issues, start/switch/finish a branch, or anything phrased like "ship it", "bump and tag", "merge when green", "release v...". Route through jetsam workflow verbs (save / sync / ship / release / start / switch / finish / tidy / checks) — NOT raw `git`/`gh` via Bash and NOT the low-level `mcp__jetsam__git` passthrough. Workflow verbs return plans you confirm() before they execute, catching mistakes before history is written. Use the `git` passthrough only when no workflow verb fits.
-version: 1.0.2
+description: Use this skill for ALL git and GitHub workflow operations. Triggers on commit/save, push/sync, ship, release/tag, open or merge PR, check CI, manage issues, start/switch/finish a branch, force push, or anything phrased like "ship it", "bump and tag", "merge when green", "release v...", "force push", "create tag", "delete tag". Route through jetsam workflow verbs (save / sync / ship / release / tag / start / switch / finish / tidy / checks) — NOT raw `git`/`gh` via Bash and NOT the low-level `mcp__jetsam__git` passthrough. Workflow verbs return plans you confirm() before they execute, catching mistakes before history is written. Use the `git` passthrough only when no workflow verb fits.
+version: 1.1.0
 ---
 
 # Jetsam Git Workflow
@@ -44,8 +44,8 @@ mcp__jetsam__ship(message="fix", cwd="/home/teague/Projects/other")   # not: git
 
 The `mcp__jetsam__git` passthrough (which supports `-C <path>`) is the
 fallback ONLY for operations no workflow verb covers: LFS hook bypass with
-`--no-verify`, admin-bypass merges, force-with-lease pushes, cross-fork
-pushes, heredoc commit bodies. If a verb covers it, use the verb with `cwd=`.
+`--no-verify`, admin-bypass merges, cross-fork pushes, heredoc commit
+bodies. If a verb covers it, use the verb with `cwd=`.
 
 **Stale-jetsam symptom:** if `cwd=` is silently dropped, the verb returns a
 state whose `repo_root` doesn't match the path you passed — upgrade jetsam
@@ -136,3 +136,24 @@ either way the in-memory config is left unchanged.
 ### Start work on an issue
 1. `mcp__jetsam__start(target="42")` → creates branch from issue number
 2. `mcp__jetsam__confirm(id=plan_id)`
+
+### Tag management
+```
+mcp__jetsam__tag()                                         # list tags
+mcp__jetsam__tag(action="create", name="v1.0.0", message="release 1.0.0")  # plan
+mcp__jetsam__tag(action="create", name="v1.0.0", push=True)                # plan: create + push
+mcp__jetsam__tag(action="delete", name="v1.0.0", push=True)                # plan: delete local + remote
+mcp__jetsam__tag(action="push", name="v1.0.0")                             # plan: push existing tag
+mcp__jetsam__confirm(id=plan_id)                                           # execute
+```
+
+### Force push (after rebase / amend)
+```
+mcp__jetsam__sync(force_with_lease=True)                   # fetch+rebase+force-push (preferred)
+mcp__jetsam__ship(force_with_lease=True, message="fix")    # stage+commit+force-push+PR
+mcp__jetsam__sync(force=True)                              # unconditional force push (dangerous)
+```
+
+Force push on the default branch emits a high-visibility warning in the plan.
+Prefer `force_with_lease=True` over `force=True` — it refuses if the remote
+has commits you haven't fetched.

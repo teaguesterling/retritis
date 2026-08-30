@@ -18,7 +18,7 @@
     },
     "jetsam": {
       "source": "./plugins/jetsam",
-      "tree_sha256": "d96af131d6131cd3fee55167bcbe74c93f709f0629443c5a42f77ceb42e61e67",
+      "tree_sha256": "d159e72fb8660125192bb1ad727bbdd5d38eff14bc3f0db9019584bc8249a172",
       "version": "1.0.2"
     },
     "kibitzer": {
