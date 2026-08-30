@@ -11,6 +11,11 @@
       "tree_sha256": "5ad76342a20fd55a9a6936c28ebdd435ff5d7c71f32e457ec901b2d2118dcca1",
       "version": "1.0.2"
     },
+    "duckeye": {
+      "source": "./plugins/duckeye",
+      "tree_sha256": "db8a395eb952a13e4ee422bdcbfa6568424046443d073db983bcbe7cccb0fab0",
+      "version": "0.14.0"
+    },
     "fledgling": {
       "source": "./plugins/fledgling",
       "tree_sha256": "c634331798ab0eb5aed19d58396324e596be5438e3e499f9dcfd4922693ba528",

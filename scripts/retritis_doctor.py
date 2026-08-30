@@ -190,7 +190,11 @@ def _read_mcp_command(plugin: str) -> tuple[str, list[str]] | None:
 
 
 # Plugins where "no MCP server" is the intended state.
-NO_MCP_BY_DESIGN = {"agent-riggs": "CLI tool", "umwelt": "internal infrastructure"}
+NO_MCP_BY_DESIGN = {
+    "agent-riggs": "CLI tool",
+    "duckeye": "CLI tool",
+    "umwelt": "internal infrastructure",
+}
 DISABLED_BY_USER: dict[str, str] = {}  # kibitzer enabled 2026-06-19
 
 

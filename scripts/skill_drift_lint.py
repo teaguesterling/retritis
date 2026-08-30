@@ -48,6 +48,11 @@ CLI_PLUGINS = {
     "agent-riggs": [
         "brief", "ingest", "status", "trust", "ratchet", "metrics", "init",
     ],
+    "duckeye": [
+        "page", "pages", "section", "search", "select", "raw",
+        "summary", "profile", "output", "format", "limit", "init",
+        "de", "dep", "der",
+    ],
 }
 
 # Plugins that are intentionally disabled (skipped in lint with a note).
@@ -64,7 +69,8 @@ SKIP_MCP_SPAWN: set[str] = set()
 # Soft misses are warnings-only, so the blast radius is just cleaner output.
 #   connect, getattr — squackit selector docs explain call-receiver matching
 #                      with `duckdb.connect()` / `getattr(x, 'method')()`.
-SOFT_MISS_IGNORE = {"connect", "getattr"}
+#   pandoc           — duckeye documentation references pandoc as a helper tool.
+SOFT_MISS_IGNORE = {"connect", "getattr", "pandoc"}
 
 # Tools a SKILL.md documents *ahead of* the tool's release: they aren't on the
 # live MCP server yet (or aren't in the released version), so the strict check
@@ -179,8 +185,13 @@ def read_mcp_command(plugin: str) -> tuple[str, list[str]] | None:
 
 
 def find_skill_md(plugin: str) -> Path | None:
-    p = PLUGINS_ROOT / plugin / "skills" / f"{plugin}-workflow" / "SKILL.md"
-    return p if p.exists() else None
+    for candidate in [
+        PLUGINS_ROOT / plugin / "skills" / f"{plugin}-workflow" / "SKILL.md",
+        PLUGINS_ROOT / plugin / "skills" / plugin / "SKILL.md",
+    ]:
+        if candidate.exists():
+            return candidate
+    return None
 
 
 # ── Lint driver ────────────────────────────────────────────────────────────

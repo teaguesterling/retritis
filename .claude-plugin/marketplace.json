@@ -58,6 +58,12 @@
       "source": "./plugins/test-failure-investigator",
       "description": "Orchestration skill — jetsam→blq→squackit→lackpy→subagent loop for root-causing test failures",
       "version": "1.0.0"
+    },
+    {
+      "name": "duckeye",
+      "source": "./plugins/duckeye",
+      "description": "Terminal document, source AST, and data table reader with CSS selectors (-Q) and section extraction (-S)",
+      "version": "0.14.0"
     }
   ]
 }
