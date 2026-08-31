@@ -31,10 +31,13 @@ tests, read `git log`, open the file. Several mechanisms in this stack report
 success having done nothing — `save()` without `confirm()` returns a valid
 program, no error, and a plausible plan dict, and commits nothing.
 
-> **Version sensitivity.** Lines marked *(lackpy ≤ 0.4)* describe behaviour fixed
-> on the `mcp-tool-metadata` branch and not yet released. They are written so the
-> advice is safe on either version — following it costs nothing after the fix. If
-> you are on a later lackpy, re-check those three before treating them as current.
+> **Version sensitivity.** v0.15.1 is the current release, and lines marked
+> *(lackpy ≤ 0.15.1)* are still live in it. The fixes exist only on the unreleased
+> `mcp-tool-metadata` branch, so on anything you can `pip install` today these
+> caveats **apply**. They are written so the advice is safe either way — following
+> it costs nothing after the fix lands. Re-check the three against your installed
+> version rather than assuming; an earlier draft of this file carried a made-up
+> version number, which is the failure this note now exists to prevent.
 
 ## You must supply three things. Missing any one fails.
 
@@ -70,7 +73,17 @@ failure it is usually right: duck_hunt's pytest parser keeps the *last*
 test → helper → raise chain yields `src/mylib/checks.py:2`. Verified both ways.
 
 `pytest_json` always reports the `nodeid` prefix and never sets `ref_line`, so it
-is always the test. `squackit.view` returns the source path directly.
+is always the test.
+
+**Nothing in squackit hands a program a source path.** Over MCP — the setup this
+file configures — `view` renders markdown (`file:range` headings around fenced
+code), `find` renders a markdown table, and `find_names` returns a newline-joined
+string of *names*, never paths. All three are strings; see the measured table
+below. `as_json=true` switches every squackit tool to a documented envelope
+(`{"rows": […], "columns": […], "omitted": N}`), which is the right answer for a
+**tool-calling loop**, where your harness parses it — but not inside a generated
+lackpy program, which has no `json` in `ALLOWED_BUILTINS` and so cannot parse the
+envelope either. Resolve the path in the caller and pass it in.
 
 **3. The file's current text.** Any operation whose payload derives from current
 state cannot be written by a program that has not yet read that state. This is
@@ -84,19 +97,25 @@ new_text=…)`, which removes the need to quote the old text, the model invents 
 lackpy --workspace "$REPO" -c "$INTENT" --profile fix
 ```
 
-Ship these profiles into `.lackpy/kits/` (they are in this plugin's `profiles/`):
-`fix`, `diagnose`, `ship`, `report`, `explore`.
+Ship these profiles into **`$REPO/.lackpy/kits/`** (they are in this plugin's
+`profiles/`): `fix`, `diagnose`, `ship`, `report`, `explore`.
+
+This is **per target repo, not per user**. `kits_dir` is `config_dir / "kits"` and
+`config_dir` is strictly `workspace / ".lackpy"` with no global fallback, so
+`~/.lackpy/kits/` is never consulted and copying them there once gives you
+`FileNotFoundError` in every repo. The same goes for `config.toml`: a `$REPO`
+without its own gets `order = ["templates", "rules"]` — no LLM tier at all.
 
 If you name tools inline instead, **use `--profile none --tools a,b`**. Three
 silent traps otherwise:
 
 | what you write | what happens |
 |---|---|
-| `--profile log` | a bare token is a profile *name*, not a tool. Fails with `program=''`, `error=None` |
+| `--profile log` | a bare token is a profile *name*, not a tool. On ≤ 0.15.1 this raises `FileNotFoundError` out of `_load_tools_file` — an uncaught traceback, not a clean error. `919b3da` turns it into a message naming the fix |
 | *(omit `--profile`)* | not "all tools" — the built-in default is a `debug` profile that does not ship |
 | `--profile none --tools log` | ✓ |
 
-**Read the failure envelope from stderr** *(lackpy ≤ 0.4; fixed by `a96bafa`)*.
+**Read the failure envelope from stderr** *(lackpy ≤ 0.15.1; fixed by `7430fd8`)*.
 Success goes to stdout with exit 0; the "all providers failed" envelope goes to
 **stderr with exit 1**. A caller reading stdout alone records every failed
 generation as an empty program with no error. Read both streams and you are
@@ -106,7 +125,7 @@ correct on either version.
 
 - **Say "return X."** lackpy returns the last *expression*. A program ending in
   `count = …` yields `None`.
-- **Name the return shape.** *(lackpy ≤ 0.4; `ce4d271` derives `returns` from the
+- **Name the return shape.** *(lackpy ≤ 0.15.1; `4f5cccd` derives `returns` from the
   tool's `outputSchema`, which fixes the type half.)* Every MCP tool arrived as
   `returns="Any"`, so the model guessed, and a wrong guess still validates and
   runs. On a battery with no shapes given: **0/24 correct while 17/24 called the
@@ -119,7 +138,7 @@ correct on either version.
   call; an invariant is a fact about two, and only the first survives description.
 - **Do not paste source without a guard.** Injected code gets echoed into the
   program and fails validation with `Forbidden AST node: FunctionDef`.
-- **Avoid "find the first match."** *(lackpy ≤ 0.4; `6e86efc` allows
+- **Avoid "find the first match."** *(lackpy ≤ 0.15.1; `1c85284` allows
   `GeneratorExp` and `next`.)* `next(genexp)`, `any(genexp)`, `for … break` and
   iterating a subscript were all rejected, leaving only
   `[x for x in xs if …][0]` — which trips better coder models *harder*, since they
@@ -156,11 +175,36 @@ indistinguishable from the first unless you look at the world.
 ## Configuration that changes outcomes
 
 ```toml
+[inference]
+order = ["llm"]          # REQUIRED: a provider not named here is never constructed.
+                         # Default is ["templates", "rules"] -- no LLM tier at all.
+
 [inference.providers.llm]
+plugin   = "woollama"    # REQUIRED: service.py builds a provider only for
+                         # "woollama" or "cascade". Omit it and the whole block
+                         # is silently inert -- no error, just no LLM.
 model    = "openai/tiiny/Qwen/Qwen3-Coder-30B-A3B-Instruct"   # explicit id, never X/default
 base_url = "http://127.0.0.1:47600/v1"                        # pooled: queue, not a wedge
+api_key  = "..."
 params   = { max_tokens = 4096, chat_template_kwargs = { enable_thinking = false } }
 ```
+
+The tier name (`llm` here) is arbitrary but must match between the two tables;
+`lackpyctl init` names it `local`. Both `plugin` and the `order` entry are
+load-bearing and both fail *quietly* — this block was published once without
+them, which reads fine and does nothing.
+
+`order = ["llm"]` does **not** mean LLM-only. `TemplatesProvider` and
+`RulesProvider` are appended unconditionally *before* the order loop, and
+dispatch returns the first provider yielding a valid program — so both always run
+ahead of your model whatever `order` says. `RulesProvider.available()` is
+unconditionally `True` and it preempts on exactly the intent shapes this file
+encourages (`read file X`, `find the definitions of X`, `glob X`). If you are
+measuring the model, confirm which tier actually answered rather than assuming.
+
+`api_key` is **optional** — lackpy passes `provider_cfg.get("api_key")` through,
+so `None` is fine for a local endpoint that does not check it. Set it if yours
+does; do not ship the literal `"..."`.
 
 - **Thinking is per-request configuration**, and the only dialect honoured is
   `chat_template_kwargs.enable_thinking`. Worth 33× on a reasoning model
@@ -168,7 +212,10 @@ params   = { max_tokens = 4096, chat_template_kwargs = { enable_thinking = false
   5/6 on real work against 3/6 **off**, so do not set it off globally.
 - **Model choice is a trade.** A Coder/Instruct model with no thinking mode is
   the best speed-to-quality default; a reasoning model with thinking on is the
-  most capable and ~3-5× slower.
+  most capable and ~3-5× slower. Note `lackpyctl init` still writes
+  `qwen2.5-coder:1.5b` as its default, and that is also lackpy's built-in
+  fallback model — 1.5B-class models did not survive delegation in any battery
+  here, so override it rather than inheriting it.
 - **Curate tools per task.** 1-2 tools is ~200-470 prompt tokens against ~6,900
   for everything. There is no all-tools mode.
 - **Set `cwd` on every `[mcp_servers.*]` entry.** A defensive habit rather than a
@@ -184,12 +231,20 @@ cuts its summary to the terminal width and assumes 80 columns with no TTY, so a
 long test name leaves nothing: a 73-character `FAILED file::test - ` prefix
 leaves 7, and the stored message is `'Asse...'`.
 
+**Fixed since blq-cli v1.1.0** (`861b382`), which sets `CAPTURE_COLUMNS = 200` and
+`env.setdefault("COLUMNS", "200")` around the capture; duck_hunt#57 is closed too.
+On v1.1.0 or later `blq run test` is already wide and needs nothing:
+
 ```bash
-COLUMNS=200 blq run test      # stores 32 characters instead of 7
+blq run test                  # v1.1.0+: wide by default
+COLUMNS=200 blq run test      # needed only on blq < 1.1.0
 ```
 
-`--keep-raw` retains the raw log but does **not** change the parsed message.
+The mechanism is `env.setdefault("COLUMNS", "200")`, so an explicit `COLUMNS`
+from the caller still wins — setting 200 on a current blq is redundant rather
+than ignored, and you can still narrow it deliberately to test truncation.
 
-Forward note: this becomes unnecessary if blq-cli#51 lands a wide capture default,
-or duck_hunt#57 stops the parser discarding the good message it already derived
-from the failures block. Correct today; check before relying on it.
+Check with `blq --version` before reaching for the override. If your messages are
+still truncated on a current blq, the override will not help and the cause is
+elsewhere — do not let it absorb the search. `--keep-raw` retains the raw log but
+does **not** change the parsed message.

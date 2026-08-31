@@ -11,6 +11,11 @@
       "tree_sha256": "5ad76342a20fd55a9a6936c28ebdd435ff5d7c71f32e457ec901b2d2118dcca1",
       "version": "1.0.2"
     },
+    "duckeye": {
+      "source": "./plugins/duckeye",
+      "tree_sha256": "db8a395eb952a13e4ee422bdcbfa6568424046443d073db983bcbe7cccb0fab0",
+      "version": "0.14.0"
+    },
     "fledgling": {
       "source": "./plugins/fledgling",
       "tree_sha256": "c634331798ab0eb5aed19d58396324e596be5438e3e499f9dcfd4922693ba528",
@@ -18,7 +23,7 @@
     },
     "jetsam": {
       "source": "./plugins/jetsam",
-      "tree_sha256": "072aa5671cd7160fbebb3258e1cf247aed263eeb8e3f09df9c7f3eccde9ca61d",
+      "tree_sha256": "d159e72fb8660125192bb1ad727bbdd5d38eff14bc3f0db9019584bc8249a172",
       "version": "1.0.2"
     },
     "kibitzer": {
@@ -28,12 +33,12 @@
     },
     "lackpy": {
       "source": "./plugins/lackpy",
-      "tree_sha256": "dfbb50fdba43314d2282005760d0a9f493a451d12c028842a8ce68cc9935650a",
+      "tree_sha256": "6ae564571f3ea526621fba56506bf590161e42f155992ca44f06350a99d16a4f",
       "version": "1.1.1"
     },
     "squackit": {
       "source": "./plugins/squackit",
-      "tree_sha256": "e3b2e7eb78f906e101067e18c702cb1d64127781d364edcf5124e675ef549871",
+      "tree_sha256": "095de293c6247a32ee46813b298433f79f3fee021566caf0ba6a7969d24f76c0",
       "version": "1.0.3"
     },
     "test-failure-investigator": {

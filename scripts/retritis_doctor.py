@@ -85,8 +85,18 @@ def _venv_site_packages() -> Path | None:
     return None
 
 
+KNOWN_ALIASES: dict[str, list[str]] = {
+    "fledgling_mcp": ["fledgling", "source-sextant"],
+    "ast_pluckit": ["pluckit"],
+    "jetsam_mcp": ["jetsam"],
+    "blq_cli": ["blq-cli", "blq"],
+    "lackpy_lang": ["lackpy/packages/lackpy-lang", "lackpy-lang"],
+    "woollama": ["woollama/main", "woollama"],
+}
+
+
 def check_editable_installs(fix: bool = False) -> list[Check]:
-    """Verify every `_editable_impl_*.pth` file points at a directory that exists."""
+    """Verify every `_editable_impl_*.pth` file points at directories that exist."""
     sp = _venv_site_packages()
     if sp is None:
         return [Check("editable installs", "WARN", "no recognized venv site-packages dir")]
@@ -97,32 +107,41 @@ def check_editable_installs(fix: bool = False) -> list[Check]:
     for pth in pth_files:
         m = _PTH_RE.match(pth.name)
         pkg = m.group(1) if m else pth.stem
-        target = pth.read_text().strip()
-        if Path(target).is_dir():
-            checks.append(Check(f"editable {pkg}", "OK", target))
+        lines = [line.strip() for line in pth.read_text().splitlines() if line.strip()]
+        if not lines:
+            checks.append(Check(f"editable {pkg}", "FAIL", "empty .pth file", fix_hint=f"reinstall {pkg}"))
             continue
-        # Stale — try to find the right path. Exact repo-name match only:
-        # a loose startswith could redirect an editable package's import
-        # root to an unrelated sibling repo (e.g. `fledgling` matching
-        # `fledgling-experiments`). See issue #2.
+
+        all_valid = all(Path(target).is_dir() for target in lines)
+        if all_valid:
+            unique_targets = list(dict.fromkeys(lines))
+            checks.append(Check(f"editable {pkg}", "OK", ", ".join(unique_targets)))
+            continue
+
+        # Find valid suggestion for broken paths
         suggestion: str | None = None
+        names_to_try = [pkg, pkg.lower().split("_")[0], pkg.replace("_", "-")]
+        if pkg in KNOWN_ALIASES:
+            names_to_try = KNOWN_ALIASES[pkg] + names_to_try
+
         for hint in SOURCE_REPO_HINTS:
-            for repo_root in hint.iterdir() if hint.exists() else []:
-                if repo_root.name.lower() == pkg.lower().split("_")[0]:
-                    # Heuristic: strip everything before the first /Projects/<repo>
-                    parts = target.split("/")
-                    for i, part in enumerate(parts):
-                        if part == "Projects" or part == "projects":
-                            relpath = "/".join(parts[i + 1:])
-                            candidate = hint / relpath
-                            if candidate.is_dir():
-                                suggestion = str(candidate)
-                                break
-                    if suggestion:
+            if not hint.exists():
+                continue
+            for name in names_to_try:
+                candidate_repo = hint / name
+                if candidate_repo.is_dir():
+                    # Check common layouts: repo/src, repo/packages/*/src, or repo directly
+                    if (candidate_repo / "src").is_dir():
+                        suggestion = str(candidate_repo / "src")
+                        break
+                    elif candidate_repo.is_dir():
+                        suggestion = str(candidate_repo)
                         break
             if suggestion:
                 break
-        detail = f"target does not exist: {target}"
+
+        invalid_targets = [t for t in lines if not Path(t).is_dir()]
+        detail = f"target does not exist: {', '.join(invalid_targets)}"
         fix_hint = (
             f"echo '{suggestion}' > {pth}"
             if suggestion else
@@ -130,7 +149,7 @@ def check_editable_installs(fix: bool = False) -> list[Check]:
         )
         if fix and suggestion:
             pth.write_text(suggestion + "\n")
-            checks.append(Check(f"editable {pkg}", "OK", f"repaired: {target} → {suggestion}", repaired=True))
+            checks.append(Check(f"editable {pkg}", "OK", f"repaired: {', '.join(invalid_targets)} → {suggestion}", repaired=True))
         else:
             checks.append(Check(f"editable {pkg}", "FAIL", detail, fix_hint))
     return checks
@@ -171,7 +190,11 @@ def _read_mcp_command(plugin: str) -> tuple[str, list[str]] | None:
 
 
 # Plugins where "no MCP server" is the intended state.
-NO_MCP_BY_DESIGN = {"agent-riggs": "CLI tool", "umwelt": "internal infrastructure"}
+NO_MCP_BY_DESIGN = {
+    "agent-riggs": "CLI tool",
+    "duckeye": "CLI tool",
+    "umwelt": "internal infrastructure",
+}
 DISABLED_BY_USER: dict[str, str] = {}  # kibitzer enabled 2026-06-19
 
 
