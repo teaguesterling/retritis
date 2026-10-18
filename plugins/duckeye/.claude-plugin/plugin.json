@@ -1,7 +1,7 @@
 {
   "name": "duckeye",
   "description": "Terminal document, source AST, and data table reader — renders markdown, PDF, DOCX, ZIM, and 27+ source languages via DuckDB duck_blocks; provides CSS selector queries (-Q) over Tree-sitter ASTs, hierarchical section extraction (-S), and automatic tabular data rendering",
-  "version": "0.14.0",
+  "version": "0.15.0",
   "author": {
     "name": "Teague Sterling",
     "email": "teaguesterling@users.noreply.github.com"
