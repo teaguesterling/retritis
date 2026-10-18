@@ -143,11 +143,7 @@ skill to find them, and to check you are not rewriting a page that already exist
 
 ### 5.1a Where the skill lives
 
-The skill's files live in the handling repo. The brief's location is kept as a relative
-symlink: `~/.dotfiles/.claude/skills/artifact-corpus -> ../../artifact-corpus/skill`. The
-existing dotfiles mechanism then links it into `~/.claude/skills/` as it does
-`house-artifact`. On a machine without the private submodule, the link dangles and the skill
-is absent, which is the correct failure.
+The skill's files live in the handling repo. `.dotfiles/install.sh` gains `install_directory "artifact-corpus/skill" ".claude/skills/artifact-corpus"`; no skill is linked by install.sh today.
 
 ### 5.2 Ledger schema (`ledger.csv`, one row per *id seen*)
 
@@ -164,7 +160,7 @@ is absent, which is the correct failure.
 | `version` | the version string from the last `read` |
 | `sha256` | a hash of the cached HTML |
 | `seen_by` | `list`, `transcript:snape`, `transcript:longbottom` (`;`-joined) |
-| `status` | `stub` (id only) \| `cached` \| `unreadable` \| `excluded` \| `foreign` |
+| `status` | `stub` (id only) \| `read` (read at `version`; *cached* is local: the file exists here and its sha256 matches, so the ledger never records it) \| `unreadable` \| `excluded` \| `foreign` |
 | `owner` | `mine` \| `other`, from the `read` header ("owned by you") or the `list` scope |
 
 CSV is chosen because it diffs and merges line by line in git, and DuckDB reads it
