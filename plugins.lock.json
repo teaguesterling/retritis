@@ -13,8 +13,8 @@
     },
     "duckeye": {
       "source": "./plugins/duckeye",
-      "tree_sha256": "db8a395eb952a13e4ee422bdcbfa6568424046443d073db983bcbe7cccb0fab0",
-      "version": "0.14.0"
+      "tree_sha256": "8ed94e1d0cd4290dacbd3247e008d649366ff59a27b9be2684f45271ea71bf69",
+      "version": "0.15.0"
     },
     "fledgling": {
       "source": "./plugins/fledgling",
