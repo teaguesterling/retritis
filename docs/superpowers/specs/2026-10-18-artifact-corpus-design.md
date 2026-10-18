@@ -296,3 +296,29 @@ stated as rules.
   else. That decides the `unreadable` status.
 - Whether `zim_search` performs acceptably at about 60 pages with large embedded images
   (the 654 KB page is mostly base64 JPEG).
+
+## 9. As built (2026-10-18), where the build departs from §1–§8
+
+The implementation lives in `teaguesterling/artifact-corpus` (private) at `78ecb55` and
+later. The ledger lives in `teaguesterling/artifact-ledger`. The first real run is
+written up at https://claude.ai/artifact/FAUUcUyLoxJQXQdJVTQBNn.
+
+- **Status values:** `stub`, `read`, `unreadable`, `foreign` (`excluded` stays an
+  override). `unreadable` exists because test-fixture ids leaked from transcripts.
+  It refuses to demote a `read` row without `--force`.
+- **Columns:** `read_on` was added (UTC date of the last ingest). Staleness is
+  `updated > read_on`, not a version-epoch comparison. `artifact-corpus-migrate`
+  adds missing columns.
+- **Alias source:** `Artifact read` names its saved file by the artifact's UUID even
+  for a short-id read. Ingest takes `--read-id` and `--version` from the read
+  header and records the UUID alias itself. §5.3's version tier is now a backup.
+- **Measured §8 answers:** the UUID and short-id forms return the same version.
+  The version epoch matches `list`'s updated date (UTC) for 36 of 43 pages; the
+  exceptions are Docs shells and one app with runtime data.
+- **Kind `doc`:** pages converted to the Claude Docs type serve a generic shell.
+  Ingest detects it, and the build leaves such pages out.
+- **Merge:** the merge driver is three-way against BASE, per cell.
+- **Premise:** only 3 of 49 pages use the house classes (§1 assumed about 20).
+- **Not yet done:** longbottom install (needs the `.dotfiles` push), 11 stubs (an
+  auto-mode classifier denied `artifact-corpus-ingest`), and the title repair for
+  the 6 existing Docs-shell rows.
