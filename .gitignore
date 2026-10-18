@@ -10,3 +10,6 @@ bench/phase4/results/_work/
 
 # python droppings
 __pycache__/
+
+# superpowers specs/plans are local working docs, not tracked
+docs/superpowers/
