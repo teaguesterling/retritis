@@ -47,6 +47,52 @@ jobs:
                   print(f"skip {ext}: {e}")
           PY
 
+      # fledgling-mcp's `serve` is not a Python server. cli.py:153 ends in
+      # os.execvp("duckdb", cmd), so the process BECOMES the duckdb CLI, and the
+      # MCP server is the mcp_server_start() call at the end of
+      # init-fledgling-analyst.sql, inside that CLI. The guard at cli.py:121 that
+      # printed "Error: duckdb CLI not found in PATH" is one line before the exec,
+      # so there is no later operation to defer it to: the binary is a hard
+      # requirement to serve at all, and this job has to supply it.
+      #
+      # PINNED to an exact tag, not releases/latest, for the reason duckeye's
+      # test.yml gives: 2.0.0 RENAMED every release asset, from
+      # duckdb_cli-linux-amd64.zip to duckdb-cli-linux-amd64.tar.gz, so a stale
+      # URL 404s and curl exits 22. `latest` also means the tested version can
+      # change with no commit. The tag here is 1.5.6, NOT duckeye's v2.0.0, so the
+      # asset is still the .zip: fledgling pins duckdb>=1.5.2,<1.6 in its
+      # pyproject and says the same in its README, so 2.0.0 is outside the range
+      # the package claims to support. Both 1.5.6 and 2.0.0 were measured booting
+      # green; 1.5.6 is the supported one, and it is also what pip resolves for
+      # the Python module today, so this step and the one above share one
+      # ~/.duckdb/extensions/v1.5.6 store instead of two version-keyed ones.
+      - name: Install DuckDB CLI (fledgling-mcp execs it to serve)
+        if: matrix.tool.pkg == 'fledgling-mcp'
+        run: |
+          curl -fsSL "https://github.com/duckdb/duckdb/releases/download/v1.5.6/duckdb_cli-linux-amd64.zip" \
+            -o /tmp/duckdb-cli.zip
+          unzip -o /tmp/duckdb-cli.zip -d /tmp/duckdb-cli
+          sudo install /tmp/duckdb-cli/duckdb /usr/local/bin/
+          duckdb --version
+
+      # The CLI reads its own extension store, and the step above covers only two
+      # of the six extensions that fledgling's init-fledgling-base.sql LOADs. With
+      # the CLI installed but this step absent, the boot still exits 1 -- first on
+      # duckdb_mcp, then on fts (both measured in a clean HOME). This list mirrors
+      # the LOAD lines in init-fledgling-base.sql; fts is a CORE extension, so it
+      # installs without FROM community.
+      #
+      # Deliberately NOT wrapped in `|| true`. The step above is, which is why its
+      # coverage gap stayed invisible until the boot step failed in its place.
+      - name: Install the duckdb extensions fledgling LOADs at boot
+        if: matrix.tool.pkg == 'fledgling-mcp'
+        run: |
+          set -euo pipefail
+          for ext in duckdb_mcp read_lines sitting_duck markdown duck_tails; do
+            duckdb -c "INSTALL $ext FROM community"
+          done
+          duckdb -c "INSTALL fts"
+
       - name: Boot the MCP server
         # Success = exits 0 on </dev/null, or 124 (timed out = stayed up).
         # An import/resolution crash exits non-zero quickly.
