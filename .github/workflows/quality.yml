@@ -48,7 +48,10 @@ jobs:
           python -m pip install --upgrade pip
           # mcp client is needed to spawn each plugin's server and call tools/list.
           # fastmcp is what most plugins use to implement the server side.
-          pip install "mcp>=1.0" fastmcp
+          # mcp 2.x renamed FastMCP to MCPServer and removed mcp.server.fastmcp. Capped
+          # so this job keeps measuring the v1 code the suite actually ships; see the
+          # fresh-install failures of 2026-11-02. STOPGAP, not the migration.
+          pip install "mcp>=1.0,<2" fastmcp
 
       - name: Clone + install plugin sources (editable)
         # Editable installs mean the lint sees the same code paths a dev does.
