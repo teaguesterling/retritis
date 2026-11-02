@@ -51,9 +51,11 @@ jobs:
       # os.execvp("duckdb", cmd), so the process BECOMES the duckdb CLI, and the
       # MCP server is the mcp_server_start() call at the end of
       # init-fledgling-analyst.sql, inside that CLI. The guard at cli.py:121 that
-      # printed "Error: duckdb CLI not found in PATH" is one line before the exec,
-      # so there is no later operation to defer it to: the binary is a hard
-      # requirement to serve at all, and this job has to supply it.
+      # printed "Error: duckdb CLI not found in PATH" has nothing between it and
+      # that exec which uses duckdb or avoids it -- the lines in between only
+      # locate the init SQL and build the argv. So there is no later operation to
+      # defer the check to: the binary is a hard requirement to serve at all, and
+      # this job has to supply it.
       #
       # PINNED to an exact tag, not releases/latest, for the reason duckeye's
       # test.yml gives: 2.0.0 RENAMED every release asset, from
@@ -84,6 +86,18 @@ jobs:
       #
       # Deliberately NOT wrapped in `|| true`. The step above is, which is why its
       # coverage gap stayed invisible until the boot step failed in its place.
+      #
+      # THIS STEP IS A STOPGAP, unlike the CLI step above it. Installing the CLI is
+      # this repo's job; installing fledgling's extensions is fledgling's.
+      # init-fledgling-base.sql:15-20 LOADs all six and INSTALLs none, and an
+      # explicit LOAD does not autoinstall, so `serve` fails on a cold
+      # ~/.duckdb/extensions even though fledgling's getting-started.md:8 says they
+      # are "installed automatically on first use". The real fix is an INSTALL
+      # before each LOAD in fledgling's init SQL: the sandbox lockdown runs after
+      # that file is .read, so it would not be refused. Until then this step makes
+      # CI green for a case a real `pip install fledgling-mcp` still fails, and the
+      # list here is a COPY of fledgling's LOAD lines, so a seventh LOAD will break
+      # this job again. Delete this step once fledgling INSTALLs what it LOADs.
       - name: Install the duckdb extensions fledgling LOADs at boot
         if: matrix.tool.pkg == 'fledgling-mcp'
         run: |
