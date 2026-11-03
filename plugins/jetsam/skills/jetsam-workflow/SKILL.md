@@ -18,15 +18,28 @@ tools instead of running git or gh commands through Bash.
   `mcp__jetsam__modify_plan(id=..., ...)` before confirming, or discarded
   with `mcp__jetsam__cancel(id=...)` to abort it without touching history.
 - **Query operations** (status, log, diff, etc.) return results directly.
-- **All errors** return `{error, message, recoverable}` dicts.
+- **Errors** from the workflow verbs return `{error, message, recoverable}`
+  dicts. **The `git` passthrough is the exception:** it returns
+  `{ok, stdout, stderr, returncode}`, so read `returncode`, not `error`. A
+  `git grep` with no match is `ok: false`, `returncode: 1`, empty `stderr` --
+  a normal "no results", not a failure (jetsam#34).
 
 ## Targeting a non-cwd repo: use `cwd=`, NOT `git -C`
 
 Every workflow verb (`status`, `save`, `sync`, `ship`, `start`, `finish`,
-`tidy`, `release`, `log`, `diff`, `switch`, `pr_*`, `issues`, `issue_close`,
-`checks`) accepts `cwd: str | None = None` (as of jetsam `33d5869`,
-2026-06-06). Set it to operate on another repo; omit it to use the process
-cwd.
+`tidy`, `release`, `tag`, `log`, `diff`, `switch`, `pr_*`, `issues`,
+`issue_close`, `checks`) accepts `cwd: str | None = None` (as of jetsam
+`33d5869`, 2026-06-06). Set it to operate on another repo.
+
+**Omitting it is not the same as "use the current repo".** When `cwd` is
+omitted the verb falls back to the session's `active_root`, which this
+plugin's `.mcp.json` seeds from `${PWD}` -- the directory `claude` was
+launched from. That is the right repo for most sessions and the wrong one
+whenever the work moved to a worktree or another project. Measured
+2026-11-03: with `active_root` set to one repo, `status()` answered for it
+while `log()` and `diff()` answered for the server's own directory, and
+neither said so. **Confirm the subject from `repo_root` in the reply before
+acting on it.**
 
 **To add/commit/push in a different repo, pass `cwd=` to the workflow verb —
 do NOT fall through to `mcp__jetsam__git(args=["-C", path, ...])`.** The
@@ -46,6 +59,13 @@ The `mcp__jetsam__git` passthrough (which supports `-C <path>`) is the
 fallback ONLY for operations no workflow verb covers: LFS hook bypass with
 `--no-verify`, admin-bypass merges, cross-fork pushes, heredoc commit
 bodies. If a verb covers it, use the verb with `cwd=`.
+
+**Pending release (jetsam#35):** the passthrough takes `cwd=` too, so
+`["-C", path, ...]` stops being necessary; and every workspace verb refuses a
+call that names no repo at all, instead of reading the server's own directory
+-- `{"error": "no_root"}`, or `"bad_root"` when the path given is not a
+directory. Until that release, keep putting `-C <path>` first in passthrough
+args.
 
 **Stale-jetsam symptom:** if `cwd=` is silently dropped, the verb returns a
 state whose `repo_root` doesn't match the path you passed — upgrade jetsam
@@ -114,6 +134,22 @@ Env-var seeding at MCP server launch (via `.mcp.json` env block):
 `JETSAM_AUTO_CONFIRM_SAFE_VERBS`. These are read once at launch; the server
 holds the values in RAM. `config(reset=true)` reverts to those seed values,
 not hardcoded defaults.
+
+**`JETSAM_ACTIVE_ROOT` is seeded to `${PWD}` by this plugin's `.mcp.json`**, so
+`active_root` is the directory `claude` was launched from. Use `${PWD}`, not
+`${CLAUDE_PROJECT_DIR}`: an `.mcp.json` `env` value is an ordinary
+environment-variable reference, and nothing sets `CLAUDE_PROJECT_DIR` for MCP
+config. Measured on Claude Code 2.1.317 — `${PWD}` and `${HOME}` expand,
+`${CLAUDE_PROJECT_DIR}` reports `Missing environment variables`.
+
+**Name the repository on every call that is not about the session's own
+directory.** The seed covers the common case and nothing else. When the work is
+in a worktree or another project, pass `cwd="<repo path>"`, or set it once with
+`config(set={"active_root": "<repo path>"})`. A verb that resolves the wrong
+repository answers confidently and gives no hint it did: measured 2026-11-03,
+with `active_root` set to one repo, `log()` and `diff()` still answered for the
+server's own directory while `status()` answered for `active_root`. Confirm the
+subject from `repo_root` in the reply before acting on it.
 
 Validation is strict + atomic: unknown keys raise, invalid values raise,
 either way the in-memory config is left unchanged.

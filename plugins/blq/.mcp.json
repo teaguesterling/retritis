@@ -2,6 +2,9 @@
   "blq_mcp": {
     "command": "blq",
     "args": ["mcp", "serve"],
-    "type": "stdio"
+    "type": "stdio",
+    "env": {
+      "BLQ_ACTIVE_ROOT": "${PWD}"
+    }
   }
 }

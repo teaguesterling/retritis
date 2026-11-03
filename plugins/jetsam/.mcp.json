@@ -2,6 +2,9 @@
   "jetsam": {
     "command": "jetsam",
     "args": ["serve"],
-    "type": "stdio"
+    "type": "stdio",
+    "env": {
+      "JETSAM_ACTIVE_ROOT": "${PWD}"
+    }
   }
 }
