@@ -106,9 +106,18 @@ block (measured on Claude Code 2.1.317: `Missing environment variables`).
 **`active_root` steers the read tools only.** `run` and `exec` pass no `cwd` to
 their child process, so a run executes in the server's own directory and its
 log lands in that directory's `.bird/`, whatever `active_root` says
-(blq-cli#55). While that is open, a build or test run in another repo has no
+(blq-cli#55). Until the fix ships, a build or test run in another repo has no
 MCP path: use the `blq` CLI there, and point `active_root` at that repo before
 reading the results back.
+
+**Pending release (blq-cli#56):** every workspace tool takes `cwd=`, and a run
+made through one workspace is readable back through it. A call that names no
+workspace -- no `cwd=` and no `active_root` -- is then refused rather than run
+against the server's own directory, and the refusal **raises** (`no_root`, or
+`bad_root` when the path is not a directory) because an error dict was dropped
+by each tool's declared output schema. Two more things follow the resolved
+workspace from that release on: the registered-command registry a prefix match
+reroutes through, and that project's own `mcp.disabled_tools`.
 
 ## Refs — how to point at a run or event
 
