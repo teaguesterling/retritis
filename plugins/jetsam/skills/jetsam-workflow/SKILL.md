@@ -115,6 +115,22 @@ Env-var seeding at MCP server launch (via `.mcp.json` env block):
 holds the values in RAM. `config(reset=true)` reverts to those seed values,
 not hardcoded defaults.
 
+**`JETSAM_ACTIVE_ROOT` is seeded to `${PWD}` by this plugin's `.mcp.json`**, so
+`active_root` is the directory `claude` was launched from. Use `${PWD}`, not
+`${CLAUDE_PROJECT_DIR}`: an `.mcp.json` `env` value is an ordinary
+environment-variable reference, and nothing sets `CLAUDE_PROJECT_DIR` for MCP
+config. Measured on Claude Code 2.1.317 — `${PWD}` and `${HOME}` expand,
+`${CLAUDE_PROJECT_DIR}` reports `Missing environment variables`.
+
+**Name the repository on every call that is not about the session's own
+directory.** The seed covers the common case and nothing else. When the work is
+in a worktree or another project, pass `cwd="<repo path>"`, or set it once with
+`config(set={"active_root": "<repo path>"})`. A verb that resolves the wrong
+repository answers confidently and gives no hint it did: measured 2026-11-03,
+with `active_root` set to one repo, `log()` and `diff()` still answered for the
+server's own directory while `status()` answered for `active_root`. Confirm the
+subject from `repo_root` in the reply before acting on it.
+
 Validation is strict + atomic: unknown keys raise, invalid values raise,
 either way the in-memory config is left unchanged.
 

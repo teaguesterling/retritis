@@ -98,6 +98,18 @@ Env-var seeding at MCP server launch (via `.mcp.json` env block):
 `BLQ_DEFAULT_HISTORY_LIMIT`. Read once at launch; `config(reset=true)`
 reverts to these values.
 
+**`BLQ_ACTIVE_ROOT` is seeded to `${PWD}` by this plugin's `.mcp.json`**, so the
+workspace resolves from the directory `claude` was launched from. Use `${PWD}`,
+not `${CLAUDE_PROJECT_DIR}`, which does not expand in an `.mcp.json` `env`
+block (measured on Claude Code 2.1.317: `Missing environment variables`).
+
+**`active_root` steers the read tools only.** `run` and `exec` pass no `cwd` to
+their child process, so a run executes in the server's own directory and its
+log lands in that directory's `.bird/`, whatever `active_root` says
+(blq-cli#55). While that is open, a build or test run in another repo has no
+MCP path: use the `blq` CLI there, and point `active_root` at that repo before
+reading the results back.
+
 ## Refs — how to point at a run or event
 
 Tools like `output`, `info`, `inspect`, `report` take a `ref`. Grammar:
