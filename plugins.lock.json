@@ -8,7 +8,7 @@
     },
     "blq": {
       "source": "./plugins/blq",
-      "tree_sha256": "5ad76342a20fd55a9a6936c28ebdd435ff5d7c71f32e457ec901b2d2118dcca1",
+      "tree_sha256": "3c336152edea4534cd9a52b2c847a4994d1d4b1c380a6e40de9225671aa329d1",
       "version": "1.0.2"
     },
     "duckeye": {
@@ -23,7 +23,7 @@
     },
     "jetsam": {
       "source": "./plugins/jetsam",
-      "tree_sha256": "d159e72fb8660125192bb1ad727bbdd5d38eff14bc3f0db9019584bc8249a172",
+      "tree_sha256": "84a715cde9bc4c5f0aae21f1437bcc8d3717d2499dfc03b8797bf2c360cd6900",
       "version": "1.0.2"
     },
     "kibitzer": {
