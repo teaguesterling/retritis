@@ -38,7 +38,7 @@
     },
     "squackit": {
       "source": "./plugins/squackit",
-      "tree_sha256": "095de293c6247a32ee46813b298433f79f3fee021566caf0ba6a7969d24f76c0",
+      "tree_sha256": "9b525217ca3474966f73cf0ce011505c47c3b29d3e4e4eeb8cf22c00497b3f0b",
       "version": "1.0.3"
     },
     "test-failure-investigator": {
