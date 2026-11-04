@@ -2,6 +2,9 @@
   "squackit": {
     "command": "squackit",
     "args": ["mcp", "serve"],
-    "type": "stdio"
+    "type": "stdio",
+    "env": {
+      "SQUACKIT_ACTIVE_ROOT": "${PWD}"
+    }
   }
 }
