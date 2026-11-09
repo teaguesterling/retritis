@@ -50,7 +50,7 @@ This is the ratchet. It only turns one direction.
 
 ## What it saves
 
-Measured 2026-05-25 on longbottom, Teague's build machine, against `grep` for the same questions:
+Measured 2026-05-25, against `grep` for the same questions:
 
 | Question type | Tool | Context cost compared to grep |
 |---|---|---|
