@@ -13,3 +13,6 @@ __pycache__/
 
 # superpowers specs/plans are local working docs, not tracked
 docs/superpowers/
+
+# public site build output (Sphinx)
+docs/_build/

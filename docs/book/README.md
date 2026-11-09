@@ -48,7 +48,7 @@ This guide describes the **shipped** suite — what you use today. The architect
 actively evolving; for the *proposed* revisions (splitting lackpy into language/runtime/
 generator, kibitzer's explicit enforce/coach faculties, umwelt as an opt-in
 event-in-context rule engine, agent-riggs as umwelt's rule *generator*) see
-[RFC 0001 — Suite architecture](../rfcs/0001-suite-architecture.md). Where this guide and
+[RFC 0001 — Suite architecture](https://github.com/teaguesterling/retritis/blob/main/docs/rfcs/0001-suite-architecture.md). Where this guide and
 the RFC differ, the guide is *now* and the RFC is *next*.
 
 ## Conventions
