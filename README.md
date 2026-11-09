@@ -73,7 +73,7 @@ Before you can fix, refactor, or understand anything, you need reliable facts ab
 |------|-------------|---------|
 | [sitting_duck](https://github.com/teaguesterling/sitting_duck) | CSS selectors over tree-sitter ASTs in DuckDB. 27 languages. The query engine underneath everything else. | `INSTALL sitting_duck FROM community;` |
 | [duck_tails](https://github.com/teaguesterling/duck_tails) | Git history as queryable DuckDB tables. Per-file, per-commit, per-function. | `INSTALL duck_tails FROM community;` |
-| [duck_hunt](https://github.com/teaguesterling/duck_hunt) | Log parsing for 90+ development tools and CI/CD systems. Structured extraction from build output. | `INSTALL duck_hunt FROM community;` |
+| [duck_hunt](https://github.com/teaguesterling/duck_hunt) | Log parsing for 110+ development tools and CI/CD systems. Structured extraction from build output. | `INSTALL duck_hunt FROM community;` |
 | [fledgling](https://github.com/teaguesterling/fledgling) | SQL macros for definitions, callers, cross-file resolution, structural similarity. | `pip install fledgling-mcp` |
 | [squackit](https://github.com/teaguesterling/squackit) | MCP server + CLI wrapping fledgling with smart defaults, session caching, compound workflows, and token-aware output. The surface most users interact with. | `pip install squackit` |
 | [pluckit](https://github.com/teaguesterling/pluckit) | jQuery for source code. Fluent chains: select → filter → mutate → test → save. | `pip install ast-pluckit` |
@@ -89,7 +89,7 @@ Build, test, and capture what happens. The seam between human and agent: structu
 | [blq](https://github.com/teaguesterling/blq-cli) | Build log capture, sandbox presets, structured query. Run builds, query errors, analyze results — all through MCP or CLI. | `pip install blq-cli` |
 | [kibitzer](https://github.com/teaguesterling/kibitzer) | Mode-aware tool-call observer. Path protection per mode, bash interception with observe/suggest/redirect ratchet, pattern-based coaching from ~250 experimental runs. Has a full umwelt plugin — registers mode properties (writable, strategy, coaching-frequency, max-turns) and consumes resolved policy via PolicyEngine. Shares a failure mode taxonomy with lackpy for correction hints. | `pip install kibitzer` |
 | [agent-riggs](https://github.com/teaguesterling/agent-riggs) | Cross-session trace analysis, pattern extraction, template promotion. | `pip install agent-riggs` |
-| [ratchet-detect](https://github.com/teaguesterling/ratchet-detect) | Analyzes Claude Code conversation logs and finds ratchet candidates. One command, actionable report. | `pip install ratchet-detect` |
+| [ratchet-detect](https://github.com/teaguesterling/ratchet-detect) | Analyzes Claude Code conversation logs and finds ratchet candidates. One command, actionable report. | not yet published (no PyPI package as of 2026-11-09) |
 
 **How they compose:** blq captures build events. kibitzer observes tool-use patterns in the current session — with its umwelt plugin, mode configuration (writable paths, strategy text, coaching frequency) comes from the same policy database that controls tool access. agent-riggs analyzes patterns across sessions. ratchet-detect finds the patterns worth promoting. The observation data feeds back into every other layer — blq errors become pluckit selectors, agent-riggs traces become lackpy templates, kibitzer's correction hints feed into lackpy's PolicyLayer through a shared failure mode taxonomy. Observation informed by authorization, correction informed by observation.
 
@@ -101,7 +101,7 @@ Git workflows, code generation, policy enforcement.
 |------|-------------|---------|
 | [jetsam](https://github.com/teaguesterling/jetsam) | Git workflow accelerator. Save, sync, ship. Preview plans before execution. | `pip install jetsam-mcp` |
 | [lackpy](https://github.com/teaguesterling/lackpy) | Micro-inferencer that translates natural language intent into sandboxed tool-composition programs. Local model, AST-validated, traced execution — a 30B-class Coder/Instruct model is the practical default; 1.5B-class models do not survive delegation. Ships tool profiles and a `lackpy-delegation` skill for the calling side. Has a PolicyLayer — ordered chain of policy sources (kit baseline → kibitzer coaching → umwelt restrictions) that resolves allowed tools, constraints, and prompt hints before generation. | `pip install lackpy` |
-| [umwelt](https://github.com/teaguesterling/umwelt) | CSS-syntax policy engine with vocabulary-agnostic core and built-in SQLite compiler. Selectors + cascade resolve policy per-entity. Each consumer (kibitzer, lackpy, sandbox builders) queries resolved policy through the PolicyEngine API — never touches the parser or compiler directly. Generic context qualifiers let any cross-taxon entity (mode, principal, world) gate a rule. | `pip install umwelt` |
+| [umwelt](https://github.com/teaguesterling/umwelt) | CSS-syntax policy engine with vocabulary-agnostic core and built-in SQLite compiler. Selectors + cascade resolve policy per-entity. Each consumer (kibitzer, lackpy, sandbox builders) queries resolved policy through the PolicyEngine API — never touches the parser or compiler directly. Generic context qualifiers let any cross-taxon entity (mode, principal, world) gate a rule. | `pip install "umwelt @ git+https://github.com/teaguesterling/umwelt"` (PyPI `umwelt` is an unrelated project) |
 
 **How they compose:** jetsam handles the git ceremony. lackpy generates sandboxed programs from intent — but before generation, its PolicyLayer resolves what's allowed: the kit provides the baseline tool set (S1), kibitzer adds coaching hints and correction signals (S3), and umwelt provides world-model restrictions (S5). The chain is ordered by priority; each source narrows what the previous allowed. umwelt declares what's allowed and compiles it to SQLite — the PolicyEngine is the consumer-facing API. Each consumer queries its own slice: kibitzer asks "is tool X allowed? what are this mode's writable paths?", lackpy asks "which tools can this program use?", a sandbox builder asks "what mounts are writable?" Same compiled database, different consumers reading different views. One policy, many enforcement points.
 
@@ -326,28 +326,62 @@ friction → observation → crystallization → tool → less friction → repe
 ### Quick start (global)
 
 This installs the retritis tools and wires them into every Claude Code session.
+The same steps, with more explanation, are at [helpfledgling.ai/install](https://helpfledgling.ai/install.html).
+They follow the `fresh-install` CI workflow, which tests Linux x86-64.
 
 ```bash
-# 1. Install Python packages
-pip install blq-cli jetsam-mcp fledgling squackit kibitzer
+# 1. Install the pinned suite into its own venv, and put it on PATH
+#    (retritis is not on PyPI; Claude Code starts the servers by name from PATH)
+python3 -m venv ~/.local/share/retritis
+~/.local/share/retritis/bin/pip install "retritis[all] @ git+https://github.com/teaguesterling/retritis"
+export PATH="$HOME/.local/share/retritis/bin:$HOME/.local/bin:$PATH"   # also add to your shell profile
 
-# 2. Install DuckDB extensions (run once inside duckdb)
-duckdb -c "INSTALL sitting_duck FROM community; INSTALL duck_tails FROM community; INSTALL duck_hunt FROM community;"
+# 2. Install the DuckDB CLI (fledgling-mcp runs it). Linux x86-64; see duckdb.org for others
+curl -fsSL -o duckdb_cli.zip \
+  https://github.com/duckdb/duckdb/releases/download/v1.5.6/duckdb_cli-linux-amd64.zip
+unzip -o duckdb_cli.zip
+install -D -m 755 duckdb ~/.local/bin/duckdb
 
-# 3. Add the retritis plugin marketplace (inside Claude Code)
+# 3. Install DuckDB extensions, for the CLI and for the Python duckdb module
+for ext in duckdb_mcp read_lines sitting_duck markdown duck_tails duck_hunt; do
+  duckdb -c "INSTALL $ext FROM community"
+done
+duckdb -c "INSTALL fts"
+~/.local/share/retritis/bin/python -c "
+import duckdb
+con = duckdb.connect()
+for ext in ('sitting_duck', 'duck_tails', 'duck_hunt'):
+    con.execute(f'INSTALL {ext} FROM community')
+"
+```
+
+Then, inside Claude Code started from a shell with that `PATH`, one line at a time:
+
+```text
 /plugin marketplace add teaguesterling/retritis
-
-# 3b. Verify the checkout against its lock before trusting the plugins:
-#     every plugin's pinned version + content hash must match plugins.lock.json
-#     (rejects tampered/drifted plugin trees — fail closed).
-python3 scripts/verify_plugins.py
-
-# 4. Install all plugins
-/plugin install blq@retritis
-/plugin install jetsam@retritis
 /plugin install fledgling@retritis
 /plugin install squackit@retritis
+/plugin install blq@retritis
+/plugin install jetsam@retritis
 /plugin install kibitzer@retritis
+/plugin install lackpy@retritis
+/plugin install agent-riggs@retritis
+/plugin install umwelt@retritis
+/plugin install duckeye@retritis
+/plugin install test-failure-investigator@retritis
+```
+
+`retritis[all]` provides the tools for the first seven plugins. umwelt needs
+`~/.local/share/retritis/bin/pip install "umwelt @ git+https://github.com/teaguesterling/umwelt"`, and duckeye
+needs its own installer (`curl -fsSL https://raw.githubusercontent.com/teaguesterling/duckeye/main/install.sh | bash`).
+test-failure-investigator is a skill only.
+
+To verify a **local checkout** of this repo against its lock before trusting the
+plugins (every plugin's pinned version + content hash must match
+`plugins.lock.json`; fails closed on tampered or drifted plugin trees):
+
+```bash
+python3 scripts/verify_plugins.py
 ```
 
 That's it. Each plugin wires up the MCP server, adds routing skills ("instead of grep, use find_definitions"), and optionally installs hooks that nudge you toward the structured tool.
@@ -357,13 +391,15 @@ That's it. Each plugin wires up the MCP server, adds routing skills ("instead of
 Some tools need project-level initialization:
 
 ```bash
-# Initialize fledgling's DuckDB views for this project
-fledgling init
+# Create blq's log store here (--no-mcp: the plugin already starts the blq server)
+blq init --no-mcp
 
 # Register blq commands for this project's build system
-blq register test "pytest"
-blq register build "make"
+blq commands register test "pytest"
+blq commands register build "make"
 ```
+
+The fledgling server needs no per-project setup.
 
 ### What the plugins provide
 
@@ -385,7 +421,7 @@ Each plugin bundles three things:
 duckdb -c "SELECT extension_name, installed FROM duckdb_extensions() WHERE extension_name IN ('sitting_duck', 'duck_tails', 'duck_hunt');"
 
 # Check that Python packages are available
-blq --version && jetsam --version && fledgling --version && squackit --version && kibitzer --version
+command -v blq jetsam fledgling-mcp squackit kibitzer duckdb
 ```
 
 ### Suite health
@@ -414,7 +450,7 @@ The `quality` GitHub Actions workflow runs `skill_drift_lint.py` on every PR tha
 Retritis is **advisory glue under a real sandbox** (umwelt policy + an isolation layer like nsjail), not an enforcement perimeter by itself. The explicit trust decisions:
 
 - **Cross-session briefings are untrusted data.** The agent-riggs SessionStart hook surfaces a *prior session's* briefing, which can carry text derived from earlier tool outputs or repo files. It is piped through `plugins/agent-riggs/hooks/briefing_guard.py`, which normalizes it, redacts instruction-shaped lines, and fences it as explicitly untrusted DATA before injection. This is a mitigation for the embedded-directive class of poisoning, not a proof — adversarial content that reads as plausible telemetry can survive. Treat the `.riggs/` store with the same trust as the checkout itself.
-- **Plugins are pinned and verified, fail closed.** `plugins.lock.json` records a pinned version + sha256 tree hash per plugin; `scripts/verify_plugins.py` rejects any unpinned entry, version drift, or content mismatch. CI verifies on every PR, and installs should run it after `/plugin marketplace add` (step 3b above). Limits: the lock lives in this repo, so it defends against tampered *checkouts* and unreviewed plugin changes — not against a fully compromised upstream; that requires commit signing / out-of-band lock comparison.
+- **Plugins are pinned and verified, fail closed.** `plugins.lock.json` records a pinned version + sha256 tree hash per plugin; `scripts/verify_plugins.py` rejects any unpinned entry, version drift, or content mismatch. CI verifies on every PR, and a local checkout can run it before trusting the plugins (see Quick start). Limits: the lock lives in this repo, so it defends against tampered *checkouts* and unreviewed plugin changes — not against a fully compromised upstream; that requires commit signing / out-of-band lock comparison.
 - **MCP server commands resolve from `$PATH`.** Each plugin's `.mcp.json` invokes bare command names (`blq`, `jetsam`, `fledgling`, …). Whatever binary is first on your PATH *is* the MCP server — inherent to the Claude Code plugin model. Keep attacker-writable directories off your PATH; `scripts/retritis_doctor.py` shows which binaries actually resolved.
 - **Hooks fail open by default — visibly.** The kibitzer PreToolUse guard warns and proceeds when kibitzer isn't importable (a warning is printed; nothing is silently dropped). Set `RETRITIS_FAIL_CLOSED=1` to block tool calls instead when the guard can't run. The doctor reports component health but is diagnostic, not a gate.
 - **The suite discourages raw `Bash`, yet blq ships a general `exec` tool.** That is a deliberate ergonomic escape hatch, and it has the same power as `Bash` — umwelt/kibitzer policy and the sandbox are what constrain it, not the tool's framing.
@@ -463,4 +499,4 @@ The bad news: you will name things like "retritis" and think it's funny.
 
 ## License
 
-MIT
+AGPL-3.0-or-later (see `LICENSE`). Each tool in the suite carries its own license.
