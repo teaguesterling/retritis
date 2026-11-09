@@ -17,8 +17,13 @@ import sys
 from pathlib import Path
 
 PATH_MARKERS = ("briefs/", "superpowers/", "rfcs/")
-CONTENT_MARKERS = ("ssh ionos", "claude.ai/code/session_")
-SCANNED_SUFFIXES = (".html", ".txt")
+# Matched case-insensitively against the raw bytes of EVERY file (js, css,
+# svg and maps carry text too). Compressed files such as objects.inv cannot
+# be scanned this way; their text also appears in the html, which is.
+CONTENT_MARKERS = (b"ssh ionos", b"claude.ai/code/session_")
+# Hidden paths are build state (.doctrees keeps text the html drops, and its
+# pickle holds absolute host paths), except these known root files.
+ALLOWED_DOTFILES = (".buildinfo", ".nojekyll")
 
 
 def find_leaks(root: Path) -> list[str]:
@@ -27,15 +32,18 @@ def find_leaks(root: Path) -> list[str]:
         if not p.is_file():
             continue
         rel = p.relative_to(root).as_posix()
+        if rel not in ALLOWED_DOTFILES and any(
+                part.startswith(".") for part in rel.split("/")):
+            leaks.append(f"{rel}: hidden build state")
+            continue
         hit = next((m for m in PATH_MARKERS if m in rel + "/"), None)
         if hit:
             leaks.append(f"{rel}: internal folder {hit}")
             continue
-        if p.suffix in SCANNED_SUFFIXES:
-            text = p.read_text(errors="replace")
-            hit = next((m for m in CONTENT_MARKERS if m in text), None)
-            if hit:
-                leaks.append(f"{rel}: contains {hit!r}")
+        data = p.read_bytes().lower()
+        hit = next((m for m in CONTENT_MARKERS if m in data), None)
+        if hit:
+            leaks.append(f"{rel}: contains {hit.decode()!r}")
     return leaks
 
 

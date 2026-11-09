@@ -83,3 +83,38 @@ def test_cli_exits_0_and_counts(tmp_path):
     root = _site(tmp_path, {"index.html": "ok"})
     r = _cli(root)
     assert r.returncode == 0 and "ok: 1 files scanned" in r.stdout
+
+
+@pytest.mark.parametrize("rel", [
+    ".doctrees/environment.pickle",
+    ".doctrees/book/03.doctree",
+    ".buildinfo.bak",
+])
+def test_dot_path_is_a_leak(csl, tmp_path, rel):
+    # Sphinx build state (doctrees keep MyST comments the HTML drops, and
+    # the pickle holds absolute host paths) must never be uploaded.
+    root = _site(tmp_path, {"index.html": "ok", rel: "x"})
+    leaks = csl.find_leaks(root)
+    assert len(leaks) == 1 and rel in leaks[0]
+
+
+@pytest.mark.parametrize("rel", [
+    "_static/custom.js", "_static/custom.css", "_images/architecture.svg",
+    "_static/app.js.map",
+])
+def test_marker_in_any_file_type_is_a_leak(csl, tmp_path, rel):
+    root = _site(tmp_path, {"index.html": "ok", rel: "/* ssh ionos */"})
+    assert len(csl.find_leaks(root)) == 1
+
+
+def test_marker_match_ignores_case(csl, tmp_path):
+    root = _site(tmp_path, {"index.html": "ok",
+                            "book/03.html": "SSH IONOS and Claude.ai/Code/Session_X"})
+    assert len(csl.find_leaks(root)) == 1
+
+
+@pytest.mark.parametrize("rel", [".buildinfo", ".nojekyll"])
+def test_known_root_dotfiles_are_allowed(csl, tmp_path, rel):
+    # Sphinx always writes .buildinfo; .nojekyll is a Pages convention.
+    root = _site(tmp_path, {"index.html": "ok", rel: "# config hash"})
+    assert csl.find_leaks(root) == []
