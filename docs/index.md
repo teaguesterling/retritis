@@ -26,9 +26,9 @@ Each tool treats one symptom.
 | Symptom | Treatment | What it does |
 |---|---|---|
 | Pasting build output into the chat | [blq](https://blq-cli.readthedocs.io) | Runs builds and tests, keeps the output, and lets the agent query the errors later. |
-| `git add . && git commit` by reflex | [jetsam](https://jetsam.readthedocs.io) | Save, sync and ship as single steps. Each step shows a plan that you confirm first. |
-| Explaining the codebase again | [fledgling](https://fledgling.readthedocs.io) and [squackit](https://squackit.readthedocs.io) | Code as queryable data: definitions, callers, structure and history, from an AST index. |
-| Context lost between sessions | [agent-riggs](https://github.com/teaguesterling/agent-riggs) | Memory across sessions: briefings, recurring patterns and trust scores. |
+| `git add . && git commit` by reflex | [jetsam](https://jetsam-mcp.readthedocs.io) | Save, sync and ship as single steps. Each step shows a plan that you confirm first. |
+| Explaining the codebase again | [fledgling](https://teaguesterling.github.io/fledgling/) and [squackit](https://squackit.readthedocs.io) | Code as queryable data: definitions, callers, structure and history, from an AST index. |
+| Context lost between sessions | [agent-riggs](https://agent-riggs.readthedocs.io) | Memory across sessions: briefings, recurring patterns and trust scores. |
 | A bash script to avoid a bash script | [kibitzer](https://kibitzer.readthedocs.io) | Watches the agent's tool calls and suggests the structured tool instead of the shell. |
 | Repeating small multi-step chores | [lackpy](https://lackpy.readthedocs.io) | Turns a plain request into a small, checked program and runs it on a local model. |
 
