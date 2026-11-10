@@ -8,7 +8,7 @@
     },
     "blq": {
       "source": "./plugins/blq",
-      "tree_sha256": "056d5636680613653221ba47dc66cf9da9cdc7fb51f25e74574c0ac016acfe6f",
+      "tree_sha256": "37f2b935ff23f8362df5c3667a96a09dfc4d676675c873f67ecc98ccf30da560",
       "version": "1.0.2"
     },
     "duckeye": {
@@ -23,7 +23,7 @@
     },
     "jetsam": {
       "source": "./plugins/jetsam",
-      "tree_sha256": "7f98f354f70d5aa4d507e96b0cf7a1cab3caf32d1202679c063762b3d656d7bd",
+      "tree_sha256": "db53c66c1e95ae5d75e3b2336119bf8f8eda989bb9c0a60b14bdcf348382c6cd",
       "version": "1.0.2"
     },
     "kibitzer": {
@@ -43,7 +43,7 @@
     },
     "test-failure-investigator": {
       "source": "./plugins/test-failure-investigator",
-      "tree_sha256": "dc7ae70d11c06ae3274dd2b6c6471d37b83d6368ca44a43a5ab5783bc3f2272a",
+      "tree_sha256": "e9847352d3c0b3e3c2df51786fef1f30678e657521f44f25ed4115754be6885e",
       "version": "1.0.0"
     },
     "umwelt": {

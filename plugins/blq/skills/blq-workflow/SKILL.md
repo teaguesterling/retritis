@@ -22,50 +22,50 @@ Do NOT run build/test commands through Bash. Use blq MCP tools instead:
 
 | Instead of... | Use blq |
 |---|---|
-| `pytest tests/` | `mcp__blq_mcp__run(command="test")` |
-| `make build` | `mcp__blq_mcp__run(command="build")` |
-| `ruff check src/` | `mcp__blq_mcp__run(command="lint")` |
-| `mypy src/` | `mcp__blq_mcp__run(command="typecheck")` |
-| Piping output through tail/grep | Run first, then use `mcp__blq_mcp__output(tail=20)` or `output(grep="FAIL")` |
-| Ad-hoc shell commands | `mcp__blq_mcp__exec(command="any shell command")` |
+| `pytest tests/` | `mcp__plugin_blq_blq_mcp__run(command="test")` |
+| `make build` | `mcp__plugin_blq_blq_mcp__run(command="build")` |
+| `ruff check src/` | `mcp__plugin_blq_blq_mcp__run(command="lint")` |
+| `mypy src/` | `mcp__plugin_blq_blq_mcp__run(command="typecheck")` |
+| Piping output through tail/grep | Run first, then use `mcp__plugin_blq_blq_mcp__output(tail=20)` or `output(grep="FAIL")` |
+| Ad-hoc shell commands | `mcp__plugin_blq_blq_mcp__exec(command="any shell command")` |
 
 ## Key tools
 
 ### Run registered commands
 ```
-mcp__blq_mcp__commands()                          # list available commands
-mcp__blq_mcp__run(command="test")                 # run a registered command
-mcp__blq_mcp__run(command="test", lines="+20-")   # run and return last 20 lines inline
-mcp__blq_mcp__exec(command="pytest -k foo")       # ad-hoc command (no pipes/redirects)
-mcp__blq_mcp__register_command(name="lint", cmd="ruff check src/")  # register new
-mcp__blq_mcp__unregister_command(name="lint")     # remove a registered command
+mcp__plugin_blq_blq_mcp__commands()                          # list available commands
+mcp__plugin_blq_blq_mcp__run(command="test")                 # run a registered command
+mcp__plugin_blq_blq_mcp__run(command="test", lines="+20-")   # run and return last 20 lines inline
+mcp__plugin_blq_blq_mcp__exec(command="pytest -k foo")       # ad-hoc command (no pipes/redirects)
+mcp__plugin_blq_blq_mcp__register_command(name="lint", cmd="ruff check src/")  # register new
+mcp__plugin_blq_blq_mcp__unregister_command(name="lint")     # remove a registered command
 ```
 
 ### Analyze results
 ```
-mcp__blq_mcp__status()                             # current source status summary
-mcp__blq_mcp__events(severity="error")             # filter events — replaces errors()
-mcp__blq_mcp__events(severity="error,warning")     # combined filter
-mcp__blq_mcp__output(ref="latest", tail=20)        # last 20 lines of a run
-mcp__blq_mcp__output(ref="+1", grep="FAIL")        # regex-search captured output
-mcp__blq_mcp__info(ref="latest")                   # run metadata + events
+mcp__plugin_blq_blq_mcp__status()                             # current source status summary
+mcp__plugin_blq_blq_mcp__events(severity="error")             # filter events — replaces errors()
+mcp__plugin_blq_blq_mcp__events(severity="error,warning")     # combined filter
+mcp__plugin_blq_blq_mcp__output(ref="latest", tail=20)        # last 20 lines of a run
+mcp__plugin_blq_blq_mcp__output(ref="+1", grep="FAIL")        # regex-search captured output
+mcp__plugin_blq_blq_mcp__info(ref="latest")                   # run metadata + events
 ```
 
 ### Drill in + compare
 ```
-mcp__blq_mcp__inspect(ref="test:1:3")              # event with log/source/git context
-mcp__blq_mcp__history(limit=20)                    # recent runs list
-mcp__blq_mcp__diff(run1=1, run2=2)                 # error fingerprint diff between runs
-mcp__blq_mcp__report(ref="latest")                 # markdown report (good for PRs/CI)
-mcp__blq_mcp__query(sql="SELECT * FROM blq_load_events() WHERE ...")  # SQL over events
-mcp__blq_mcp__ci_check(baseline="main")            # regression check vs baseline
-mcp__blq_mcp__ci_generate(shell="bash")            # emit standalone CI shell scripts from registered commands
+mcp__plugin_blq_blq_mcp__inspect(ref="test:1:3")              # event with log/source/git context
+mcp__plugin_blq_blq_mcp__history(limit=20)                    # recent runs list
+mcp__plugin_blq_blq_mcp__diff(run1=1, run2=2)                 # error fingerprint diff between runs
+mcp__plugin_blq_blq_mcp__report(ref="latest")                 # markdown report (good for PRs/CI)
+mcp__plugin_blq_blq_mcp__query(sql="SELECT * FROM blq_load_events() WHERE ...")  # SQL over events
+mcp__plugin_blq_blq_mcp__ci_check(baseline="main")            # regression check vs baseline
+mcp__plugin_blq_blq_mcp__ci_generate(shell="bash")            # emit standalone CI shell scripts from registered commands
 ```
 
 ### Housekeeping
 ```
-mcp__blq_mcp__sandbox_info()                       # sandbox spec + world-coupling grade per command
-mcp__blq_mcp__clean(mode="prune", days=30, confirm=True)  # cleanup: data/prune/schema/full (confirm=True required)
+mcp__plugin_blq_blq_mcp__sandbox_info()                       # sandbox spec + world-coupling grade per command
+mcp__plugin_blq_blq_mcp__clean(mode="prune", days=30, confirm=True)  # cleanup: data/prune/schema/full (confirm=True required)
 ```
 
 ## Session config — `config()`
@@ -75,9 +75,9 @@ server restart. Persistent state (run history, retention, registered
 commands) stays in the DB.
 
 ```
-mcp__blq_mcp__config()                                    # read current
-mcp__blq_mcp__config(set={"active_root": "/path/to/repo"}) # update
-mcp__blq_mcp__config(reset=true)                          # revert to env-seed
+mcp__plugin_blq_blq_mcp__config()                                    # read current
+mcp__plugin_blq_blq_mcp__config(set={"active_root": "/path/to/repo"}) # update
+mcp__plugin_blq_blq_mcp__config(reset=true)                          # revert to env-seed
 ```
 
 **The `active_root` key is the cross-repo ergonomics shortcut.** When set,

@@ -1,6 +1,6 @@
 ---
 name: jetsam-workflow
-description: Use this skill for ALL git and GitHub workflow operations. Triggers on commit/save, push/sync, ship, release/tag, open or merge PR, check CI, manage issues, start/switch/finish a branch, force push, or anything phrased like "ship it", "bump and tag", "merge when green", "release v...", "force push", "create tag", "delete tag". Route through jetsam workflow verbs (save / sync / ship / release / tag / start / switch / finish / tidy / checks) — NOT raw `git`/`gh` via Bash and NOT the low-level `mcp__jetsam__git` passthrough. Workflow verbs return plans you confirm() before they execute, catching mistakes before history is written. Use the `git` passthrough only when no workflow verb fits.
+description: Use this skill for ALL git and GitHub workflow operations. Triggers on commit/save, push/sync, ship, release/tag, open or merge PR, check CI, manage issues, start/switch/finish a branch, force push, or anything phrased like "ship it", "bump and tag", "merge when green", "release v...", "force push", "create tag", "delete tag". Route through jetsam workflow verbs (save / sync / ship / release / tag / start / switch / finish / tidy / checks) — NOT raw `git`/`gh` via Bash and NOT the low-level `mcp__plugin_jetsam_jetsam__git` passthrough. Workflow verbs return plans you confirm() before they execute, catching mistakes before history is written. Use the `git` passthrough only when no workflow verb fits.
 version: 1.1.0
 ---
 
@@ -14,9 +14,9 @@ tools instead of running git or gh commands through Bash.
 - **Workflow operations** (save, sync, ship, etc.) return execution plans.
   Review the plan, then call `confirm()` to execute.
 - **Plan lifecycle**: a returned plan can be re-displayed with
-  `mcp__jetsam__show_plan(id=...)`, adjusted with
-  `mcp__jetsam__modify_plan(id=..., ...)` before confirming, or discarded
-  with `mcp__jetsam__cancel(id=...)` to abort it without touching history.
+  `mcp__plugin_jetsam_jetsam__show_plan(id=...)`, adjusted with
+  `mcp__plugin_jetsam_jetsam__modify_plan(id=..., ...)` before confirming, or discarded
+  with `mcp__plugin_jetsam_jetsam__cancel(id=...)` to abort it without touching history.
 - **Query operations** (status, log, diff, etc.) return results directly.
 - **Errors** from the workflow verbs return `{error, message, recoverable}`
   dicts. **The `git` passthrough is the exception:** it returns
@@ -42,20 +42,20 @@ neither said so. **Confirm the subject from `repo_root` in the reply before
 acting on it.**
 
 **To add/commit/push in a different repo, pass `cwd=` to the workflow verb —
-do NOT fall through to `mcp__jetsam__git(args=["-C", path, ...])`.** The
+do NOT fall through to `mcp__plugin_jetsam_jetsam__git(args=["-C", path, ...])`.** The
 passthrough skips the plan/confirm safety and the structured state the
 workflow verbs return; reaching for `git -C` is the single most common way
 this skill gets bypassed.
 
 ```
 # Cross-repo work — the right way:
-mcp__jetsam__status(cwd="/home/teague/Projects/other")
-mcp__jetsam__save(message="fix", cwd="/home/teague/Projects/other")   # not: git -C other add && commit
-mcp__jetsam__sync(cwd="/home/teague/Projects/other")                  # not: git -C other push
-mcp__jetsam__ship(message="fix", cwd="/home/teague/Projects/other")   # not: git -C other add+commit+push
+mcp__plugin_jetsam_jetsam__status(cwd="/home/teague/Projects/other")
+mcp__plugin_jetsam_jetsam__save(message="fix", cwd="/home/teague/Projects/other")   # not: git -C other add && commit
+mcp__plugin_jetsam_jetsam__sync(cwd="/home/teague/Projects/other")                  # not: git -C other push
+mcp__plugin_jetsam_jetsam__ship(message="fix", cwd="/home/teague/Projects/other")   # not: git -C other add+commit+push
 ```
 
-The `mcp__jetsam__git` passthrough (which supports `-C <path>`) is the
+The `mcp__plugin_jetsam_jetsam__git` passthrough (which supports `-C <path>`) is the
 fallback ONLY for operations no workflow verb covers: LFS hook bypass with
 `--no-verify`, admin-bypass merges, cross-fork pushes, heredoc commit
 bodies. If a verb covers it, use the verb with `cwd=`.
@@ -77,38 +77,38 @@ Do NOT run git or gh commands through Bash. Use these JetSam MCP tools instead:
 
 | Instead of... | Use JetSam |
 |---|---|
-| `git status` | `mcp__jetsam__status` |
-| `git add && git commit` | `mcp__jetsam__save` |
-| `git push` / fetch+merge+push | `mcp__jetsam__sync` |
-| `git add && commit && push && gh pr create` | `mcp__jetsam__ship` |
-| `git checkout -b` to work on issue/feature | `mcp__jetsam__start` |
-| `git checkout` / `git switch` (existing branch) | `mcp__jetsam__switch` |
-| `git log` | `mcp__jetsam__log` |
-| `git diff` | `mcp__jetsam__diff` |
-| `gh pr merge` + branch cleanup | `mcp__jetsam__finish` |
-| Branch pruning / cleanup | `mcp__jetsam__tidy` |
-| `gh pr view` | `mcp__jetsam__pr_view` |
-| `gh pr list` | `mcp__jetsam__pr_list` |
-| `gh pr checks` / `gh run view` | `mcp__jetsam__checks` |
-| `gh pr comment` | `mcp__jetsam__pr_comment` |
-| `gh pr review` | `mcp__jetsam__pr_review` |
-| `gh api .../comments` (read PR comments) | `mcp__jetsam__pr_comments` |
-| `gh issue list` | `mcp__jetsam__issues` |
-| `gh issue close` | `mcp__jetsam__issue_close` |
-| `gh release create` | `mcp__jetsam__release` |
-| `git tag` / `git tag -l` / `git tag -a` | `mcp__jetsam__tag` |
-| `git push --force-with-lease` | `mcp__jetsam__sync(force_with_lease=True)` / `mcp__jetsam__ship(force_with_lease=True)` |
-| Other git commands | `mcp__jetsam__git` (passthrough) |
+| `git status` | `mcp__plugin_jetsam_jetsam__status` |
+| `git add && git commit` | `mcp__plugin_jetsam_jetsam__save` |
+| `git push` / fetch+merge+push | `mcp__plugin_jetsam_jetsam__sync` |
+| `git add && commit && push && gh pr create` | `mcp__plugin_jetsam_jetsam__ship` |
+| `git checkout -b` to work on issue/feature | `mcp__plugin_jetsam_jetsam__start` |
+| `git checkout` / `git switch` (existing branch) | `mcp__plugin_jetsam_jetsam__switch` |
+| `git log` | `mcp__plugin_jetsam_jetsam__log` |
+| `git diff` | `mcp__plugin_jetsam_jetsam__diff` |
+| `gh pr merge` + branch cleanup | `mcp__plugin_jetsam_jetsam__finish` |
+| Branch pruning / cleanup | `mcp__plugin_jetsam_jetsam__tidy` |
+| `gh pr view` | `mcp__plugin_jetsam_jetsam__pr_view` |
+| `gh pr list` | `mcp__plugin_jetsam_jetsam__pr_list` |
+| `gh pr checks` / `gh run view` | `mcp__plugin_jetsam_jetsam__checks` |
+| `gh pr comment` | `mcp__plugin_jetsam_jetsam__pr_comment` |
+| `gh pr review` | `mcp__plugin_jetsam_jetsam__pr_review` |
+| `gh api .../comments` (read PR comments) | `mcp__plugin_jetsam_jetsam__pr_comments` |
+| `gh issue list` | `mcp__plugin_jetsam_jetsam__issues` |
+| `gh issue close` | `mcp__plugin_jetsam_jetsam__issue_close` |
+| `gh release create` | `mcp__plugin_jetsam_jetsam__release` |
+| `git tag` / `git tag -l` / `git tag -a` | `mcp__plugin_jetsam_jetsam__tag` |
+| `git push --force-with-lease` | `mcp__plugin_jetsam_jetsam__sync(force_with_lease=True)` / `mcp__plugin_jetsam_jetsam__ship(force_with_lease=True)` |
+| Other git commands | `mcp__plugin_jetsam_jetsam__git` (passthrough) |
 
-## Session config — `mcp__jetsam__config`
+## Session config — `mcp__plugin_jetsam_jetsam__config`
 
 Available in jetsam 1.1.2+ (released, on PyPI; merged to main). In-memory
 only — wiped on server restart.
 
 ```
-mcp__jetsam__config()                                    # read current
-mcp__jetsam__config(set={"active_root": "/path/to/repo"}) # update
-mcp__jetsam__config(reset=true)                          # revert to env-seed
+mcp__plugin_jetsam_jetsam__config()                                    # read current
+mcp__plugin_jetsam_jetsam__config(set={"active_root": "/path/to/repo"}) # update
+mcp__plugin_jetsam_jetsam__config(reset=true)                          # revert to env-seed
 ```
 
 **The `active_root` key is the cross-repo ergonomics shortcut.** Set it once
@@ -157,37 +157,37 @@ either way the in-memory config is left unchanged.
 ## Workflow patterns
 
 ### Save and ship (most common)
-1. `mcp__jetsam__save(message="fix bug")` → returns plan
-2. `mcp__jetsam__confirm(id=plan_id)` → executes
-3. `mcp__jetsam__ship(message="fix bug")` → stage+commit+push+PR in one plan
+1. `mcp__plugin_jetsam_jetsam__save(message="fix bug")` → returns plan
+2. `mcp__plugin_jetsam_jetsam__confirm(id=plan_id)` → executes
+3. `mcp__plugin_jetsam_jetsam__ship(message="fix bug")` → stage+commit+push+PR in one plan
 
 ### Check status before acting
-1. `mcp__jetsam__status()` → branch, dirty state, ahead/behind, PR info
+1. `mcp__plugin_jetsam_jetsam__status()` → branch, dirty state, ahead/behind, PR info
 2. Decide next action based on state
 
 ### Sync before push
-1. `mcp__jetsam__sync()` → fetch+rebase/merge+push plan
-2. `mcp__jetsam__confirm(id=plan_id)`
+1. `mcp__plugin_jetsam_jetsam__sync()` → fetch+rebase/merge+push plan
+2. `mcp__plugin_jetsam_jetsam__confirm(id=plan_id)`
 
 ### Start work on an issue
-1. `mcp__jetsam__start(target="42")` → creates branch from issue number
-2. `mcp__jetsam__confirm(id=plan_id)`
+1. `mcp__plugin_jetsam_jetsam__start(target="42")` → creates branch from issue number
+2. `mcp__plugin_jetsam_jetsam__confirm(id=plan_id)`
 
 ### Tag management
 ```
-mcp__jetsam__tag()                                         # list tags
-mcp__jetsam__tag(action="create", name="v1.0.0", message="release 1.0.0")  # plan
-mcp__jetsam__tag(action="create", name="v1.0.0", push=True)                # plan: create + push
-mcp__jetsam__tag(action="delete", name="v1.0.0", push=True)                # plan: delete local + remote
-mcp__jetsam__tag(action="push", name="v1.0.0")                             # plan: push existing tag
-mcp__jetsam__confirm(id=plan_id)                                           # execute
+mcp__plugin_jetsam_jetsam__tag()                                         # list tags
+mcp__plugin_jetsam_jetsam__tag(action="create", name="v1.0.0", message="release 1.0.0")  # plan
+mcp__plugin_jetsam_jetsam__tag(action="create", name="v1.0.0", push=True)                # plan: create + push
+mcp__plugin_jetsam_jetsam__tag(action="delete", name="v1.0.0", push=True)                # plan: delete local + remote
+mcp__plugin_jetsam_jetsam__tag(action="push", name="v1.0.0")                             # plan: push existing tag
+mcp__plugin_jetsam_jetsam__confirm(id=plan_id)                                           # execute
 ```
 
 ### Force push (after rebase / amend)
 ```
-mcp__jetsam__sync(force_with_lease=True)                   # fetch+rebase+force-push (preferred)
-mcp__jetsam__ship(force_with_lease=True, message="fix")    # stage+commit+force-push+PR
-mcp__jetsam__sync(force=True)                              # unconditional force push (dangerous)
+mcp__plugin_jetsam_jetsam__sync(force_with_lease=True)                   # fetch+rebase+force-push (preferred)
+mcp__plugin_jetsam_jetsam__ship(force_with_lease=True, message="fix")    # stage+commit+force-push+PR
+mcp__plugin_jetsam_jetsam__sync(force=True)                              # unconditional force push (dangerous)
 ```
 
 Force push on the default branch emits a high-visibility warning in the plan.

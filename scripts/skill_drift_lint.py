@@ -10,11 +10,16 @@ For each plugin under `plugins/<name>/skills/<name>-workflow/SKILL.md`:
      fenced code blocks or routing tables).
   3. Report:
        - HALLUCINATIONS — SKILL claims a tool that the server doesn't expose
+       - WRONG PREFIX  — an `mcp__…__tool` id whose prefix is not one Claude
+         Code registers (`mcp__plugin_<plugin>_<server>__`, from the
+         `.mcp.json` keys). Checked statically, for every plugin, before
+         any server is started.
        - MISSING       — server has a tool the SKILL never mentions
        - SIGNATURE DRIFT (optional, --schema) — argument names listed in the
          SKILL don't match the live JSON schema
 
-Exits non-zero when hallucinations are present; missing/drift are warnings.
+Exits non-zero when hallucinations or wrong prefixes are present;
+missing/drift are warnings.
 
 Usage:
     python3 scripts/skill_drift_lint.py             # all plugins
@@ -35,9 +40,6 @@ import sys
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Iterable
-
-from mcp import ClientSession, StdioServerParameters
-from mcp.client.stdio import stdio_client
 
 PLUGINS_ROOT = Path(__file__).resolve().parents[1] / "plugins"
 
@@ -92,6 +94,7 @@ PENDING_TOOLS: dict[str, dict[str, str]] = {
 class PluginFinding:
     name: str
     hallucinations: list[str] = field(default_factory=list)
+    wrong_prefix: list[str] = field(default_factory=list)
     soft_misses: list[str] = field(default_factory=list)
     missing: list[str] = field(default_factory=list)
     pending: list[str] = field(default_factory=list)
@@ -99,7 +102,7 @@ class PluginFinding:
 
     @property
     def has_errors(self) -> bool:
-        return bool(self.hallucinations)
+        return bool(self.hallucinations or self.wrong_prefix)
 
 
 # ── SKILL.md parsing ───────────────────────────────────────────────────────
@@ -111,6 +114,9 @@ class PluginFinding:
 # also match the `_` in `mcp__plugin_blq_blq_mcp__register_command` so we need
 # the non-greedy prefix.
 MCP_REF_RE = re.compile(r"\bmcp__\w+?__(\w+)\b")
+# The same reference with its prefix kept. MCP_REF_RE alone cannot catch a
+# dead prefix: `mcp__jetsam__save` yields `save`, which the live server has.
+MCP_PREFIXED_REF_RE = re.compile(r"\b(mcp__\w+?__)\w+\b")
 # Structured-doc rows: markdown table rows OR bullet-list items. SKILL.mds use
 # both patterns to enumerate tool routings. Pulling verb references from these
 # zones (but not from free-form prose) catches the canonical signal without
@@ -146,6 +152,29 @@ def extract_skill_tool_names(skill_md: Path) -> tuple[set[str], set[str]]:
     return canonical, soft
 
 
+def registered_prefixes(plugins_root: Path = PLUGINS_ROOT) -> set[str]:
+    """Every tool-id prefix Claude Code registers for the repo's plugins.
+
+    Claude Code names a plugin's MCP tools `mcp__plugin_<plugin>_<server>__`,
+    where `<server>` is the key in that plugin's `.mcp.json` (blq's is
+    `blq_mcp`, hence `mcp__plugin_blq_blq_mcp__`).
+    """
+    prefixes = set()
+    for cfg in plugins_root.glob("*/.mcp.json"):
+        data = json.loads(cfg.read_text())
+        for server in data.get("mcpServers", data):
+            prefixes.add(f"mcp__plugin_{cfg.parent.name}_{server}__")
+    return prefixes
+
+
+def wrong_prefix_refs(text: str, valid: set[str]) -> list[str]:
+    """`mcp__…__tool` references in `text` whose prefix is not in `valid`."""
+    return sorted({
+        m.group(0) for m in MCP_PREFIXED_REF_RE.finditer(text)
+        if m.group(1) not in valid
+    })
+
+
 # ── MCP introspection ──────────────────────────────────────────────────────
 
 
@@ -157,6 +186,11 @@ async def list_mcp_tools(command: str, args: list[str]) -> list[str]:
     tools/list call still succeeds afterward, so we capture the result and
     swallow any close-time exceptions to keep the partial-success data.
     """
+    # Imported here so the static checks (and their tests) run without the
+    # mcp package installed.
+    from mcp import ClientSession, StdioServerParameters
+    from mcp.client.stdio import stdio_client
+
     captured: list[str] = []
     init_error: BaseException | None = None
     try:
@@ -208,6 +242,7 @@ async def lint_plugin(plugin: str) -> PluginFinding:
         return finding
 
     canonical, soft = extract_skill_tool_names(skill)
+    finding.wrong_prefix = wrong_prefix_refs(skill.read_text(), registered_prefixes())
 
     if plugin in DISABLED_PLUGINS:
         finding.notes.append("plugin disabled; SKILL.md content not validated")
@@ -276,7 +311,7 @@ def render_text(findings: list[PluginFinding]) -> tuple[str, int]:
     any_errors = False
     for f in findings:
         marker = "❌" if f.has_errors else "✅"
-        if not (f.hallucinations or f.soft_misses or f.missing or f.pending or f.notes):
+        if not (f.hallucinations or f.wrong_prefix or f.soft_misses or f.missing or f.pending or f.notes):
             out.append(f"{marker} {f.name}: clean")
             continue
         out.append(f"{marker} {f.name}")
@@ -285,6 +320,9 @@ def render_text(findings: list[PluginFinding]) -> tuple[str, int]:
         if f.hallucinations:
             any_errors = True
             out.append(f"   • HALLUCINATIONS ({len(f.hallucinations)}): {', '.join(f.hallucinations)}")
+        if f.wrong_prefix:
+            any_errors = True
+            out.append(f"   • WRONG PREFIX ({len(f.wrong_prefix)}): {', '.join(f.wrong_prefix)}")
         if f.pending:
             out.append(f"   • ⏳ pending release ({len(f.pending)}): {', '.join(f.pending)}")
         if f.soft_misses:
@@ -300,6 +338,7 @@ def render_json(findings: list[PluginFinding]) -> tuple[str, int]:
         {
             "plugin": f.name,
             "hallucinations": f.hallucinations,
+            "wrong_prefix": f.wrong_prefix,
             "soft_misses": f.soft_misses,
             "missing": f.missing,
             "pending": f.pending,
