@@ -313,7 +313,8 @@ investigation (one branch each, or one branch with each fix as a separate
 
 ### The failure is environmental, not in code
 If the diff (step 8) is empty or unrelated, suspect the environment —
-recent dep updates, flaky external services, clock skew. `blq diff` between
+recent dep updates, flaky external services, clock skew.
+`mcp__plugin_blq_blq_mcp__diff(run1=<green serial>, run2=<red serial>)` between
 the red run and a recent green run can show whether the failure fingerprint
 matches a known flake. Document and re-run before assuming a code fix.
 

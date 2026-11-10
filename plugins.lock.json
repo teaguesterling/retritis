@@ -43,7 +43,7 @@
     },
     "test-failure-investigator": {
       "source": "./plugins/test-failure-investigator",
-      "tree_sha256": "e9847352d3c0b3e3c2df51786fef1f30678e657521f44f25ed4115754be6885e",
+      "tree_sha256": "3ca32cb0c05173e361f08c7b2e3baeae3088daf6e7681037522c350e886bc8d8",
       "version": "1.0.0"
     },
     "umwelt": {
