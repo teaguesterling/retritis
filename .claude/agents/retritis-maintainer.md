@@ -85,7 +85,7 @@ README.md                         — public-facing
   ```
   | Instead of... | Use <tool> |
   |---|---|
-  | `git status` | `mcp__jetsam__status` |
+  | `git status` | `mcp__plugin_jetsam_jetsam__status` |
   ```
 
   This is what `skill_drift_lint.py` validates against.

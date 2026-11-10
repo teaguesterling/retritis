@@ -25,7 +25,7 @@ between those wins.
 - A subagent reports a test failure and the parent agent has to diagnose
 - The user pastes a pytest traceback and asks for root cause
 
-Do NOT fire on bare "run the tests" — that's a one-shot `mcp__blq_mcp__run`
+Do NOT fire on bare "run the tests" — that's a one-shot `mcp__plugin_blq_blq_mcp__run`
 and you go straight back to the user.
 
 ## The sequence at a glance
@@ -33,17 +33,17 @@ and you go straight back to the user.
 | # | Step (user's framing)              | Tool                                                                                  |
 |---|------------------------------------|---------------------------------------------------------------------------------------|
 | 1 | a test failed                      | trigger (blq event, traceback, or user message)                                       |
-| 2 | jetsam starts a new branch         | `mcp__jetsam__start(target="fix-<short-name>")` → `confirm`                           |
-| 3 | blq parses out the test failure    | `mcp__blq_mcp__events(severity="error")` → `mcp__blq_mcp__inspect(ref=...)`           |
+| 2 | jetsam starts a new branch         | `mcp__plugin_jetsam_jetsam__start(target="fix-<short-name>")` → `confirm`                           |
+| 3 | blq parses out the test failure    | `mcp__plugin_blq_blq_mcp__events(severity="error")` → `mcp__plugin_blq_blq_mcp__inspect(ref=...)`           |
 | 4 | squackit extracts the test code    | `mcp__plugin_squackit_squackit__investigate(name=<test_fn>, path=<repo>)`             |
 | 5 | lackpy writes selectors for called fns | `mcp__plugin_lackpy_lackpy__delegate(intent=...)` OR write selectors inline           |
-| 6 | blq has the last passing version   | `mcp__blq_mcp__history(limit=20)` → find last `status="success"` ref                  |
+| 6 | blq has the last passing version   | `mcp__plugin_blq_blq_mcp__history(limit=20)` → find last `status="success"` ref                  |
 | 7 | identify what changed since then   | `mcp__plugin_squackit_squackit__file_changes(from_rev=<last_green>, to_rev="HEAD")`   |
 | 8 | squackit pulls changed functions   | `mcp__plugin_squackit_squackit__changed_function_summary(from_rev=..., to_rev=...)`   |
 | 9 | bundle context → investigate       | `mcp__plugin_lackpy_lackpy__delegate(...)` OR pack a context string for the subagent  |
 | 10 | spawn subagent to investigate     | `Agent(subagent_type="general-purpose", prompt=<bundle>)`                             |
-| 11 | jetsam saves the fix              | `mcp__jetsam__save(message=...)` → `confirm`                                          |
-| 12 | blq re-runs the tests             | `mcp__blq_mcp__run(command="test")` — loop to step 3 if still red                     |
+| 11 | jetsam saves the fix              | `mcp__plugin_jetsam_jetsam__save(message=...)` → `confirm`                                          |
+| 12 | blq re-runs the tests             | `mcp__plugin_blq_blq_mcp__run(command="test")` — loop to step 3 if still red                     |
 
 ## The recipe — step by step
 
@@ -53,8 +53,8 @@ If the trigger was the user pasting a traceback, you have file + line +
 exception. If you only know "the tests are failing," capture them first:
 
 ```
-mcp__blq_mcp__run(command="test", lines="+30-")   # run + return last 30 lines inline
-mcp__blq_mcp__events(severity="error")             # structured failure events
+mcp__plugin_blq_blq_mcp__run(command="test", lines="+30-")   # run + return last 30 lines inline
+mcp__plugin_blq_blq_mcp__events(severity="error")             # structured failure events
 ```
 
 Pick the first failing test and grab its event ref (e.g. `test:1:3`).
@@ -65,8 +65,8 @@ Always investigate on a branch — fixes may take several iterations and you
 want a clean rollback path:
 
 ```
-plan = mcp__jetsam__start(target="fix-failing-<test_name>")
-mcp__jetsam__confirm(id=plan["id"])
+plan = mcp__plugin_jetsam_jetsam__start(target="fix-failing-<test_name>")
+mcp__plugin_jetsam_jetsam__confirm(id=plan["id"])
 ```
 
 Pass `cwd=` if the failing repo is not the current process cwd (jetsam
@@ -75,7 +75,7 @@ Pass `cwd=` if the failing repo is not the current process cwd (jetsam
 ### 3. Pull the structured failure detail
 
 ```
-mcp__blq_mcp__inspect(ref="test:1:3")
+mcp__plugin_blq_blq_mcp__inspect(ref="test:1:3")
 ```
 
 This returns log lines, the offending source snippet, and git context for
@@ -144,7 +144,7 @@ A bare call like `foo()` has `receiver=""` — won't match a non-empty value.)
 ### 6. Find the last passing run
 
 ```
-mcp__blq_mcp__history(limit=20)
+mcp__plugin_blq_blq_mcp__history(limit=20)
 ```
 
 Walk the list backward to the most recent `status="success"` run for the
@@ -266,19 +266,19 @@ After applying the subagent's proposed fix (with your judgment — don't
 auto-apply low-confidence suggestions):
 
 ```
-plan = mcp__jetsam__save(message="fix: <one-line of what>")
-mcp__jetsam__confirm(id=plan["id"])
+plan = mcp__plugin_jetsam_jetsam__save(message="fix: <one-line of what>")
+mcp__plugin_jetsam_jetsam__confirm(id=plan["id"])
 ```
 
 ### 12. Re-run the tests
 
 ```
-mcp__blq_mcp__run(command="test", lines="+30-")
+mcp__plugin_blq_blq_mcp__run(command="test", lines="+30-")
 ```
 
-- **Green:** ship via `mcp__jetsam__ship(message="...")` or push and open
-  PR via `mcp__jetsam__sync` then `pr_view`.
-- **Still red:** check `mcp__blq_mcp__diff(run1=<prev_red>, run2=<current>)`
+- **Green:** ship via `mcp__plugin_jetsam_jetsam__ship(message="...")` or push and open
+  PR via `mcp__plugin_jetsam_jetsam__sync` then `pr_view`.
+- **Still red:** check `mcp__plugin_blq_blq_mcp__diff(run1=<prev_red>, run2=<current>)`
   — if the error fingerprint *changed*, you fixed one problem and uncovered
   another (loop back to step 3 with the new failure). If the error
   fingerprint is *the same*, your fix didn't take effect (loop back to step
@@ -321,14 +321,14 @@ matches a known flake. Document and re-run before assuming a code fix.
 
 ```
 # 1. capture
-mcp__blq_mcp__run(command="test")
+mcp__plugin_blq_blq_mcp__run(command="test")
 # → run 47, 1 failure: tests/test_workflows.py::TestInvestigate::test_scopes_to_project_by_default
 
 # 2. branch
-mcp__jetsam__start(target="fix-investigate-scoping") → confirm
+mcp__plugin_jetsam_jetsam__start(target="fix-investigate-scoping") → confirm
 
 # 3. inspect
-mcp__blq_mcp__inspect(ref="test:47:1")
+mcp__plugin_blq_blq_mcp__inspect(ref="test:47:1")
 # → AssertionError: investigate leaked across project boundaries
 
 # 4. extract test + callees
@@ -342,7 +342,7 @@ mcp__plugin_squackit_squackit__investigate(name="investigate",
 # → uses defaults.code_pattern (global), not scoped_code_pattern(cwd)
 
 # 6. last green
-mcp__blq_mcp__history(limit=20) → run 39 was green, SHA abc123
+mcp__plugin_blq_blq_mcp__history(limit=20) → run 39 was green, SHA abc123
 
 # 7-8. what changed
 mcp__plugin_squackit_squackit__changed_function_summary(from_rev="abc123", to_rev="HEAD")
@@ -355,8 +355,8 @@ Agent(description="...", prompt="...")
 
 # 11-12. fix + re-run
 # (apply patch)
-mcp__jetsam__save(message="investigate: accept path arg, scope to cwd by default") → confirm
-mcp__blq_mcp__run(command="test")
+mcp__plugin_jetsam_jetsam__save(message="investigate: accept path arg, scope to cwd by default") → confirm
+mcp__plugin_blq_blq_mcp__run(command="test")
 # → green, ship
 ```
 
