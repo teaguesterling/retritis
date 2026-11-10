@@ -18,8 +18,12 @@ For each plugin under `plugins/<name>/skills/<name>-workflow/SKILL.md`:
        - SIGNATURE DRIFT (optional, --schema) — argument names listed in the
          SKILL don't match the live JSON schema
 
-Exits non-zero when hallucinations or wrong prefixes are present;
-missing/drift are warnings.
+       - UNVERIFIED    — the plugin ships an MCP server and the lint could
+         not start it, so step 3's checks never ran. List the plugin in
+         SKIP_MCP_SPAWN to opt out on purpose.
+
+Exits non-zero when hallucinations, wrong prefixes or unverified plugins are
+present; missing/drift are warnings.
 
 Usage:
     python3 scripts/skill_drift_lint.py             # all plugins
@@ -61,7 +65,8 @@ CLI_PLUGINS = {
 DISABLED_PLUGINS: set[str] = set()  # kibitzer enabled 2026-06-19 (default-free + advisory nudges)
 
 # Plugins whose MCP servers cost too much to spawn for a lint (or that need
-# special env). None today; reserved for future opt-out.
+# special env). A server that is not listed here and does not start is
+# UNVERIFIED, which fails the gate. None today; reserved for future opt-out.
 SKIP_MCP_SPAWN: set[str] = set()
 
 # Verb names that appear as backticked `verb(` inside structured rows but are
@@ -82,11 +87,9 @@ SOFT_MISS_IGNORE = {"connect", "getattr", "pandoc"}
 # instead of failing the gate. REMOVE the entry once the tool ships; if it's
 # still absent then, the strict check fires again, which is what you want.
 PENDING_TOOLS: dict[str, dict[str, str]] = {
-    "jetsam": {
-        "config": "pending jetsam 1.1.2 (config-endpoint)",
-        "tag": "pending jetsam 1.2.0 (PR #28 release)",
-    },
     # squackit:config removed — shipped in squackit 0.7.0 (2026-06-07).
+    # jetsam:config and jetsam:tag removed — jetsam 2.0.0 serves both
+    # (measured by tools/list, 2026-11-10).
 }
 
 
@@ -99,10 +102,12 @@ class PluginFinding:
     missing: list[str] = field(default_factory=list)
     pending: list[str] = field(default_factory=list)
     notes: list[str] = field(default_factory=list)
+    # Why the server would not start; None when it started or has none.
+    unverified: str | None = None
 
     @property
     def has_errors(self) -> bool:
-        return bool(self.hallucinations or self.wrong_prefix)
+        return bool(self.hallucinations or self.wrong_prefix or self.unverified)
 
 
 # ── SKILL.md parsing ───────────────────────────────────────────────────────
@@ -211,6 +216,14 @@ async def list_mcp_tools(command: str, args: list[str]) -> list[str]:
     return []
 
 
+def describe_exception(e: BaseException) -> str:
+    """Name the leaf exceptions. The stdio client wraps a dead server in a
+    TaskGroup ExceptionGroup, whose own text says only "1 sub-exception"."""
+    if isinstance(e, BaseExceptionGroup):
+        return "; ".join(describe_exception(sub) for sub in e.exceptions)
+    return f"{type(e).__name__}: {e}"
+
+
 def read_mcp_command(plugin: str) -> tuple[str, list[str]] | None:
     cfg = PLUGINS_ROOT / plugin / ".mcp.json"
     if not cfg.exists():
@@ -262,11 +275,14 @@ async def lint_plugin(plugin: str) -> PluginFinding:
         if cmd is None:
             finding.notes.append("no .mcp.json found; cannot introspect")
             return finding
+        if plugin in SKIP_MCP_SPAWN:
+            finding.notes.append("in SKIP_MCP_SPAWN; server not started, tools not checked")
+            return finding
         try:
             tools = await list_mcp_tools(*cmd)
             real = set(tools)
         except Exception as e:
-            finding.notes.append(f"failed to introspect MCP server: {type(e).__name__}: {e}")
+            finding.unverified = describe_exception(e)
             return finding
 
     # Hard hallucinations: canonical `mcp__...__verb` claims that don't match.
@@ -311,12 +327,15 @@ def render_text(findings: list[PluginFinding]) -> tuple[str, int]:
     any_errors = False
     for f in findings:
         marker = "❌" if f.has_errors else "✅"
-        if not (f.hallucinations or f.wrong_prefix or f.soft_misses or f.missing or f.pending or f.notes):
+        if not (f.hallucinations or f.wrong_prefix or f.unverified or f.soft_misses or f.missing or f.pending or f.notes):
             out.append(f"{marker} {f.name}: clean")
             continue
         out.append(f"{marker} {f.name}")
         for note in f.notes:
             out.append(f"   • note: {note}")
+        if f.unverified:
+            any_errors = True
+            out.append(f"   • UNVERIFIED: MCP server did not start: {f.unverified}")
         if f.hallucinations:
             any_errors = True
             out.append(f"   • HALLUCINATIONS ({len(f.hallucinations)}): {', '.join(f.hallucinations)}")
@@ -339,6 +358,7 @@ def render_json(findings: list[PluginFinding]) -> tuple[str, int]:
             "plugin": f.name,
             "hallucinations": f.hallucinations,
             "wrong_prefix": f.wrong_prefix,
+            "unverified": f.unverified,
             "soft_misses": f.soft_misses,
             "missing": f.missing,
             "pending": f.pending,
